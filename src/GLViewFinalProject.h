@@ -1,6 +1,9 @@
 #pragma once
 
 #include "GLView.h"
+// OpenXR
+#include "openxr.h"
+#include "openxr_platform.h"
 
 namespace Aftr
 {
@@ -23,7 +26,10 @@ public:
 
 protected:
    GLViewFinalProject( const std::vector< std::string >& args );
-   virtual void onCreate();   
+   virtual void onCreate();
+
+   XrInstance xrInstace;
+   XrSession xrSession;
 };
 
 } //namespace Aftr

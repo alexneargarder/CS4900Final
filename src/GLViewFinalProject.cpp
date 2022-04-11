@@ -34,6 +34,8 @@
 #include "AftrImGuiIncludes.h"
 #include "AftrGLRendererBase.h"
 
+
+
 using namespace Aftr;
 
 GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& args )
@@ -47,7 +49,43 @@ GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& a
 
 GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args ) : GLView( args )
 {
-   
+    XrFormFactor form_factor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+
+    XrViewConfigurationType view_type = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+
+    XrReferenceSpaceType play_space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    XrSpace play_space = XR_NULL_HANDLE;
+
+    xrInstace = XR_NULL_HANDLE;
+    XrSystemId system_id = XR_NULL_SYSTEM_ID;
+    xrSession = XR_NULL_HANDLE;
+
+    //XrGraphicsBindingOpenGLXlibKHR graphics_binding_gl;
+
+
+    uint32_t view_count = 0;
+    XrViewConfigurationView* viewconfig_views = NULL;
+
+    XrInstanceCreateInfo instance_create_info = {
+        .type = XR_TYPE_INSTANCE_CREATE_INFO,
+        .next = NULL,
+        .createFlags = 0,
+        .applicationInfo =
+            {
+            // some compilers have trouble with char* initialization
+            .applicationName = "Space Race",
+            .applicationVersion = 1,
+            .engineName = "AftrBurner",
+            .engineVersion = 0,
+            .apiVersion = XR_CURRENT_API_VERSION,
+        },
+        .enabledApiLayerCount = 0,
+        .enabledApiLayerNames = NULL,
+        .enabledExtensionCount = 0,
+        .enabledExtensionNames = NULL,
+    };
+
+    XrResult result = xrCreateInstance(&instance_create_info, &xrInstace);
 }
 
 
