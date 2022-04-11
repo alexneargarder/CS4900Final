@@ -2,7 +2,7 @@
 #Running "cmake ../src -LAH" from command line will list all CMake Variables. This is useful
 #for extending and debugging CMake scripts.
 cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
-PROJECT( "Assignment8" ) #This command populates CMAKE_SIZEOF_VOID_P and should be one of the first commands in the file
+PROJECT( "FinalProject" ) #This command populates CMAKE_SIZEOF_VOID_P and should be one of the first commands in the file
 set_property( DIRECTORY PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}" )
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE( CMakePackageConfigHelpers )

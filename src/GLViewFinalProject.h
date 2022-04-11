@@ -6,18 +6,6 @@ namespace Aftr
 {
    class Camera;
 
-/**
-   \class GLViewFinalProject
-   \author Scott Nykl 
-   \brief A child of an abstract GLView. This class is the top-most manager of the module.
-
-   Read \see GLView for important constructor and init information.
-
-   \see GLView
-
-    \{
-*/
-
 class GLViewFinalProject : public GLView
 {
 public:
@@ -37,7 +25,5 @@ protected:
    GLViewFinalProject( const std::vector< std::string >& args );
    virtual void onCreate();   
 };
-
-/** \} */
 
 } //namespace Aftr
