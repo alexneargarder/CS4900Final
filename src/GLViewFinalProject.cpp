@@ -34,6 +34,10 @@
 #include "AftrImGuiIncludes.h"
 #include "AftrGLRendererBase.h"
 #include "SDL_gamecontroller.h"
+#include <ctime>
+#include <ratio>
+#include <chrono>
+#include "WOGUILabel.h"
 
 SDL_JoyButtonEvent whichbutton;
 bool rb = false;
@@ -41,7 +45,10 @@ bool lb = false;
 SDL_GameController* xcontroller;
 SDL_Event ev;
 using namespace Aftr;
-
+bool start = true;
+std::chrono::steady_clock::time_point t1;
+std::chrono::steady_clock::time_point t2;
+bool lapover = false;
 GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& args )
 {
    GLViewFinalProject* glv = new GLViewFinalProject( args );
@@ -88,6 +95,13 @@ void GLViewFinalProject::updateWorld()
    if (lb) {
        this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
    }
+   if (!start && !lapover) {
+       if (this->timerlabel != NULL) {
+           t2 = std::chrono::steady_clock::now();
+           std::string curlaptime = std::to_string(std::chrono::duration<double>(t2 - t1).count()) + 's';
+           this->timerlabel->setText(curlaptime);
+       }
+   }
 }
 
 
@@ -124,10 +138,20 @@ void GLViewFinalProject::onKeyDown( const SDL_KeyboardEvent& key )
    if( key.keysym.sym == SDLK_1 )
    {
        this->cam->moveInLookDirection(this->cam->getCameraVelocity());
+       if (start) {
+           t1 = std::chrono::steady_clock::now();
+           start = false;
+       }
    }
    if (key.keysym.sym == SDLK_2)
    {
        this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
+       if (!start) {
+           t2 = std::chrono::steady_clock::now();
+           std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
+           std::cout << time_span << std::endl;
+           lapover = true;
+       }
    }
 }
 
@@ -149,16 +173,12 @@ void GLViewFinalProject::onJoyButtonDown(const SDL_JoyButtonEvent& key)
     if (key.button == 4)
     {
         lb = true;
-        std::cout << "LB" << std::endl;
-        //this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
-        
+        std::cout << "LB" << std::endl;        
     }
     if (key.button == 5)
     {
         rb = true;
         std::cout << "RB" << std::endl;
-        //this->cam->moveInLookDirection(this->cam->getCameraVelocity());
-        
     }
 
 }
@@ -174,14 +194,11 @@ void GLViewFinalProject::onJoyButtonUp(const SDL_JoyButtonEvent& key)
     {
         lb = false;
         std::cout << "LB" << std::endl;
-        //this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
-
     }
     if (key.button == 5)
     {
         rb = false;
         std::cout << "RB" << std::endl;
-
     }
 
     
@@ -257,6 +274,8 @@ void Aftr::GLViewFinalProject::loadMap()
       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
       worldLst->push_back( wo );
    }
+
+   std::string cockpit(ManagerEnvironmentConfiguration::getLMM() + "/models/spaceship-cockpit/Spaceship_Cockpit.fbx");
    /*SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
    xcontroller = nullptr; 
    if (SDL_IsGameController(0)) {
@@ -321,6 +340,34 @@ void Aftr::GLViewFinalProject::loadMap()
       wo->setLabel( "Grass" );
       worldLst->push_back( wo );
    }*/
+   this->timerlabel = WOGUILabel::New(NULL);
+   this->timerlabel->setText("0.00s");
+   this->timerlabel->setLabel("guiLabelTimer");
+   this->timerlabel->setPosition(Vector(0.9f, 0.9f, 1.0f));
+   this->timerlabel->setColor(255, 255, 255, 255);
+   this->timerlabel->setFontSize(16);
+   worldLst->push_back(timerlabel);
+
+   {
+       ////Create new WO
+       WO* wo = WO::New(cockpit, Vector(.01, .01, .01), MESH_SHADING_TYPE::mstFLAT);
+       wo->setPosition(Vector(0, 0, 12));
+       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       wo->upon_async_model_loaded([wo]()
+           {
+               ModelMeshSkin& cubeskin = wo->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+               //cubeskin.getMultiTextureSet().at(0)->setTextureRepeats(5.0f);
+               //cubeskin.setAmbient(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Color of object when it is not in any light
+               //cubeskin.setDiffuse(aftrColor4f(1.0f, 1.0f, 1.0f, 1.0f)); //Diffuse color components (ie, matte shading color of this object)
+               //cubeskin.setSpecular(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Specular color component (ie, how "shiney" it is)
+               //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
+           });
+       wo->setLabel("cockpit");
+       //myagera = wo;
+       worldLst->push_back(wo);
+
+
+   }
 
 
    //createFinalProjectWayPoints();

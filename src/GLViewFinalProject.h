@@ -5,6 +5,7 @@
 namespace Aftr
 {
    class Camera;
+   class WOGUILabel;
 
 class GLViewFinalProject : public GLView
 {
@@ -32,7 +33,9 @@ public:
 
 protected:
    GLViewFinalProject( const std::vector< std::string >& args );
-   virtual void onCreate();   
+   virtual void onCreate();  
+   WOGUILabel* timerlabel;
+
 };
 
 } //namespace Aftr
