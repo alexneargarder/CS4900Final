@@ -2,6 +2,9 @@
 
 #include "GLView.h"
 // OpenXR
+#define XR_USE_GRAPHICS_API_OPENGL
+#define XR_USE_PLATFORM_WIN32
+#include "windows.h"
 #include "openxr.h"
 #include "openxr_platform.h"
 
@@ -28,8 +31,12 @@ protected:
    GLViewFinalProject( const std::vector< std::string >& args );
    virtual void onCreate();
 
-   XrInstance xrInstace;
+   XrInstance xrInstance;
    XrSession xrSession;
+   XrSpace play_space;
+   XrViewConfigurationView* viewconfig_views;
+   XrEventDataBuffer runtime_event;
+   bool sessionRunning = false;
 };
 
 } //namespace Aftr

@@ -34,7 +34,9 @@
 #include "AftrImGuiIncludes.h"
 #include "AftrGLRendererBase.h"
 
-
+#include "SDL_syswm.h"
+#include "AftrOpenGLIncludes.h"
+#include "VRRenderer.h"
 
 using namespace Aftr;
 
@@ -49,22 +51,25 @@ GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& a
 
 GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args ) : GLView( args )
 {
+
+}
+
+void GLViewFinalProject::onCreate()
+{
     XrFormFactor form_factor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
     XrViewConfigurationType view_type = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
     XrReferenceSpaceType play_space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    XrSpace play_space = XR_NULL_HANDLE;
+    play_space = XR_NULL_HANDLE;
 
-    xrInstace = XR_NULL_HANDLE;
+    xrInstance = XR_NULL_HANDLE;
     XrSystemId system_id = XR_NULL_SYSTEM_ID;
     xrSession = XR_NULL_HANDLE;
 
-    //XrGraphicsBindingOpenGLXlibKHR graphics_binding_gl;
+    viewconfig_views = NULL;
 
-
-    uint32_t view_count = 0;
-    XrViewConfigurationView* viewconfig_views = NULL;
+    const char* enabled_exts[1] = { XR_KHR_OPENGL_ENABLE_EXTENSION_NAME };
 
     XrInstanceCreateInfo instance_create_info = {
         .type = XR_TYPE_INSTANCE_CREATE_INFO,
@@ -72,7 +77,6 @@ GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args )
         .createFlags = 0,
         .applicationInfo =
             {
-            // some compilers have trouble with char* initialization
             .applicationName = "Space Race",
             .applicationVersion = 1,
             .engineName = "AftrBurner",
@@ -81,16 +85,98 @@ GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args )
         },
         .enabledApiLayerCount = 0,
         .enabledApiLayerNames = NULL,
-        .enabledExtensionCount = 0,
-        .enabledExtensionNames = NULL,
+        .enabledExtensionCount = 1,
+        .enabledExtensionNames = enabled_exts,
     };
 
-    XrResult result = xrCreateInstance(&instance_create_info, &xrInstace);
-}
+    XrResult result = xrCreateInstance(&instance_create_info, &xrInstance);
 
+    std::cout << "CREATE INSTANCE RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
 
-void GLViewFinalProject::onCreate()
-{
+    XrSystemGetInfo system_get_info = {
+        .type = XR_TYPE_SYSTEM_GET_INFO, .next = NULL, .formFactor = form_factor };
+
+    result = xrGetSystem(xrInstance, &system_get_info, &system_id);
+
+    std::cout << "GET SYSTEM INFO RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    // Check graphics requirements
+    XrGraphicsRequirementsOpenGLKHR opengl_reqs = { .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
+                                                   .next = NULL };
+   
+
+    PFN_xrGetOpenGLGraphicsRequirementsKHR pfnGetOpenGLGraphicsRequirementsKHR = nullptr;
+    xrGetInstanceProcAddr(xrInstance, "xrGetOpenGLGraphicsRequirementsKHR",
+        reinterpret_cast<PFN_xrVoidFunction*>(&pfnGetOpenGLGraphicsRequirementsKHR));
+
+    result = pfnGetOpenGLGraphicsRequirementsKHR(xrInstance, system_id, &opengl_reqs);
+
+    std::cout << "GET GRAPHICS REQUIREMENTS RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+
+    if (SDL_GetWindowWMInfo(ManagerWindowing::getCurrentWindow(), &info) < 0)
+    {
+        std::cout << "GETTING INFO FAILED" << std::endl;
+    }
+
+    uint32_t view_count = 0;
+    result = xrEnumerateViewConfigurationViews( xrInstance, system_id, view_type, 0, &view_count, NULL );
+
+    std::cout << "GET VIEW COUNT RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+    std::cout << "VIEW COUNT: " << view_count << std::endl;
+
+    viewconfig_views = new XrViewConfigurationView[view_count];
+    for (uint32_t i = 0; i < view_count; i++) {
+        viewconfig_views[i].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
+        viewconfig_views[i].next = NULL;
+    }
+
+    result = xrEnumerateViewConfigurationViews(xrInstance, system_id, view_type, view_count,
+        &view_count, viewconfig_views);
+
+    std::cout << "GET VIEW CONFIGURATIONS RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    std::cout << viewconfig_views[0].recommendedImageRectHeight << " " << viewconfig_views[0].recommendedImageRectWidth << std::endl;
+
+    HWND hwnd = info.info.win.window;    
+
+    HDC handle = GetDC(hwnd);
+    HGLRC context = wglGetCurrentContext();
+
+    std::cout << "IS WINDOW?: " << IsWindow(hwnd) << std::endl;
+
+    // Create graphics binding
+    XrGraphicsBindingOpenGLWin32KHR graphics_binding_gl = {
+        .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
+        .next = NULL,
+        .hDC = handle,
+        .hGLRC = context
+    };
+    
+    
+    XrSessionCreateInfo session_create_info = {
+        .type = XR_TYPE_SESSION_CREATE_INFO, .next = &graphics_binding_gl, .systemId = system_id };
+
+    result = xrCreateSession(xrInstance, &session_create_info, &xrSession);
+
+    std::cout << "CREATE SESSION RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << " " << result << std::endl;
+
+    XrPosef identity_pose = { .orientation = {.x = 0, .y = 0, .z = 0, .w = -1.0},
+                                .position = {.x = 0, .y = 0, .z = -5} };
+
+    XrReferenceSpaceCreateInfo play_space_create_info = { .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+                                                         .next = NULL,
+                                                         .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL,
+                                                         //.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
+                                                         .poseInReferenceSpace = identity_pose };
+
+    result = xrCreateReferenceSpace(xrSession, &play_space_create_info, &play_space);
+
+    std::cout << "CREATE PLAYSPACE RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << " " << result << std::endl;
+    //ManagerEnvironmentConfiguration::registerVariable("stereoseparation", "0.05f");
+
 
    if( this->pe != NULL )
    {
@@ -115,7 +201,47 @@ void GLViewFinalProject::updateWorld()
                           //If you want to add additional functionality, do it after
                           //this call.
 
+   // Check current state of openxr
+   XrEventDataBuffer runtime_event = { .type = XR_TYPE_EVENT_DATA_BUFFER, .next = NULL };
+   XrResult poll_result = xrPollEvent( xrInstance, &runtime_event);
 
+   if (poll_result == XR_SUCCESS)
+   {
+       switch (runtime_event.type)
+       {
+       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+           XrEventDataSessionStateChanged* event = (XrEventDataSessionStateChanged*)&runtime_event;
+           switch (event->state)
+           {
+           case XR_SESSION_STATE_READY:
+               if (!sessionRunning) {
+                   XrSessionBeginInfo session_begin_info = {
+                       .type = XR_TYPE_SESSION_BEGIN_INFO,
+                       .next = NULL,
+                       .primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO };
+                   XrResult result = xrBeginSession(xrSession, &session_begin_info);
+
+                   std::cout << "BEGIN SESSION RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+                   delete glRenderer;
+                   glRenderer = VRRenderer::New(xrSession, viewconfig_views, play_space);
+               }
+               break;
+           default:
+               std::cout << "SOME OTHER STATE CHANGE " << event->state << std::endl;
+           }
+       }
+       default:
+           std::cout << "SOME OTHER THING? " << runtime_event.type << std::endl;
+           break;
+       }
+   }
+   else if (poll_result != XR_EVENT_UNAVAILABLE)
+   {
+       std::cout << "FAILED TO POLL " << poll_result << std::endl;
+   }
+
+   //std::cout << cam->getPosition() << std::endl;
 }
 
 
@@ -226,6 +352,14 @@ void Aftr::GLViewFinalProject::loadMap()
       worldLst->push_back( wo );
    }
 
+   {
+       //Create a model of earth
+       WO* wo = WO::New(ManagerEnvironmentConfiguration::getSMM() + "/models/sphereR5Earth.wrl", Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       wo->setPosition(-3, -3, 5);
+       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       wo->setLabel("Earth");
+       worldLst->push_back(wo);
+   }
 
    //createFinalProjectWayPoints();
 }
