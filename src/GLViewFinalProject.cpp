@@ -49,6 +49,31 @@ bool start = true;
 std::chrono::steady_clock::time_point t1;
 std::chrono::steady_clock::time_point t2;
 bool lapover = false;
+int checkpoint = 0;
+
+
+
+class WOWayPointSphericalDerived : public WOWayPointSpherical {
+public:
+    //using WOWayPointSpherical::onTrigger;
+    void onTrigger() {
+        checkpoint++;
+        std::cout << "Checkpoint " << checkpoint << " Reached\n";
+    }
+    WOWayPointSphericalDerived(const WayPointParametersBase& params, float radius) : IFace(this), WOWayPointSpherical(params, radius) {
+        ;
+    }
+public:
+    static WOWayPointSphericalDerived* New(const WayPointParametersBase& params, float radius) {
+        WOWayPointSphericalDerived* ptr = new WOWayPointSphericalDerived(params, radius);
+        ptr->onCreate();
+        return ptr;
+    }
+};
+
+
+
+
 GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& args )
 {
    GLViewFinalProject* glv = new GLViewFinalProject( args );
@@ -56,6 +81,7 @@ GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& a
    glv->onCreate();
    return glv;
 }
+
 
 
 GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args ) : GLView( args )
@@ -276,6 +302,8 @@ void Aftr::GLViewFinalProject::loadMap()
    }
 
    std::string cockpit(ManagerEnvironmentConfiguration::getLMM() + "/models/spaceship-cockpit/Spaceship_Cockpit.fbx");
+   std::string ring(ManagerEnvironmentConfiguration::getLMM() + "/models/66-ring-ornament/vers(4)-men-design #RGmen_US 5_H 1.65_W 5.stl");
+
    /*SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
    xcontroller = nullptr; 
    if (SDL_IsGameController(0)) {
@@ -363,14 +391,48 @@ void Aftr::GLViewFinalProject::loadMap()
                //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
            });
        wo->setLabel("cockpit");
-       //myagera = wo;
        worldLst->push_back(wo);
+
+
+
+       WO* check1 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       check1->setPosition(Vector(0, 0, 40));
+       check1->rotateAboutRelY(1.57);
+       check1->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       check1->upon_async_model_loaded([check1]()
+           {
+               ModelMeshSkin& cubeskin = check1->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+               //cubeskin.getMultiTextureSet().at(0)->setTextureRepeats(5.0f);
+               //cubeskin.setAmbient(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Color of object when it is not in any light
+               //cubeskin.setDiffuse(aftrColor4f(1.0f, 1.0f, 1.0f, 1.0f)); //Diffuse color components (ie, matte shading color of this object)
+               //cubeskin.setSpecular(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Specular color component (ie, how "shiney" it is)
+               //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
+           });
+       check1->setLabel("checkpoint");
+       worldLst->push_back(check1);
+
+
+       WO* check2 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       check2->setPosition(Vector(-50, 0, 40));
+       check2->rotateAboutRelY(1.57);
+       check2->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       check2->upon_async_model_loaded([check2]()
+           {
+               ModelMeshSkin& cubeskin = check2->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+               //cubeskin.getMultiTextureSet().at(0)->setTextureRepeats(5.0f);
+               //cubeskin.setAmbient(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Color of object when it is not in any light
+               //cubeskin.setDiffuse(aftrColor4f(1.0f, 1.0f, 1.0f, 1.0f)); //Diffuse color components (ie, matte shading color of this object)
+               //cubeskin.setSpecular(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Specular color component (ie, how "shiney" it is)
+               //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
+           });
+       check2->setLabel("checkpoint");
+       worldLst->push_back(check2);
 
 
    }
 
 
-   //createFinalProjectWayPoints();
+   createFinalProjectWayPoints();
 }
 
 
@@ -378,10 +440,14 @@ void GLViewFinalProject::createFinalProjectWayPoints()
 {
    // Create a waypoint with a radius of 3, a frequency of 5 seconds, activated by GLView's camera, and is visible.
    WayPointParametersBase params(this);
-   params.frequency = 5000;
+   params.frequency = 0;
    params.useCamera = true;
-   params.visible = true;
-   WOWayPointSpherical* wayPt = WOWayPointSpherical::New( params, 3 );
-   wayPt->setPosition( Vector( 50, 0, 3 ) );
+   params.visible = false;
+   WOWayPointSpherical* wayPt = WOWayPointSphericalDerived::New( params, 8 );
+   wayPt->setPosition( Vector( 0, 0, 40 ) );
    worldLst->push_back( wayPt );
+
+   WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
+   wayPt2->setPosition(Vector(-50, 0, 40));
+   worldLst->push_back(wayPt2);
 }
