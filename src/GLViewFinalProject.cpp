@@ -39,11 +39,11 @@
 #include <chrono>
 #include "WOGUILabel.h"
 
-SDL_JoyButtonEvent whichbutton;
+//SDL_JoyButtonEvent whichbutton;
 bool rb = false;
 bool lb = false;
-SDL_GameController* xcontroller;
-SDL_Event ev;
+//SDL_GameController* xcontroller;
+//SDL_Event ev;
 using namespace Aftr;
 bool start = true;
 std::chrono::steady_clock::time_point t1;
@@ -55,9 +55,14 @@ int checkpoint = 0;
 
 class WOWayPointSphericalDerived : public WOWayPointSpherical {
 public:
-    //using WOWayPointSpherical::onTrigger;
     void onTrigger() {
         checkpoint++;
+        if (checkpoint == 5) {
+            t2 = std::chrono::steady_clock::now();
+            std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
+            std::cout << time_span << std::endl;
+            lapover = true;
+        }
         std::cout << "Checkpoint " << checkpoint << " Reached\n";
     }
     WOWayPointSphericalDerived(const WayPointParametersBase& params, float radius) : IFace(this), WOWayPointSpherical(params, radius) {
@@ -172,12 +177,12 @@ void GLViewFinalProject::onKeyDown( const SDL_KeyboardEvent& key )
    if (key.keysym.sym == SDLK_2)
    {
        this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
-       if (!start) {
+       /*if (!start) {
            t2 = std::chrono::steady_clock::now();
            std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
            std::cout << time_span << std::endl;
            lapover = true;
-       }
+       }*/
    }
 }
 
@@ -191,7 +196,7 @@ void GLViewFinalProject::onKeyUp( const SDL_KeyboardEvent& key )
 void GLViewFinalProject::onJoyButtonDown(const SDL_JoyButtonEvent& key)
 {
     GLView::onJoyButtonDown(key);
-    whichbutton = key;
+    //whichbutton = key;
     if (key.type == SDL_JOYBUTTONUP) {
         std::cout << "released\n";
     }
@@ -212,7 +217,7 @@ void GLViewFinalProject::onJoyButtonDown(const SDL_JoyButtonEvent& key)
 void GLViewFinalProject::onJoyButtonUp(const SDL_JoyButtonEvent& key)
 {
     GLView::onJoyButtonUp(key);
-    whichbutton = key;
+    //whichbutton = key;
     if (key.type == SDL_JOYBUTTONUP) {
         std::cout << "released\n";
     }
@@ -419,15 +424,46 @@ void Aftr::GLViewFinalProject::loadMap()
        check2->upon_async_model_loaded([check2]()
            {
                ModelMeshSkin& cubeskin = check2->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-               //cubeskin.getMultiTextureSet().at(0)->setTextureRepeats(5.0f);
-               //cubeskin.setAmbient(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Color of object when it is not in any light
-               //cubeskin.setDiffuse(aftrColor4f(1.0f, 1.0f, 1.0f, 1.0f)); //Diffuse color components (ie, matte shading color of this object)
-               //cubeskin.setSpecular(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Specular color component (ie, how "shiney" it is)
-               //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
+               
            });
        check2->setLabel("checkpoint");
        worldLst->push_back(check2);
 
+       WO* check3 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       check3->setPosition(Vector(-150, 0, 80));
+       check3->rotateAboutRelY(1.57);
+       check3->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       check3->upon_async_model_loaded([check3]()
+           {
+               ModelMeshSkin& cubeskin = check3->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+           });
+       check3->setLabel("checkpoint");
+       worldLst->push_back(check3);
+
+       WO* check4 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       check4->setPosition(Vector(-250, 40, 100));
+       check4->rotateAboutRelY(1.57);
+       check4->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       check4->upon_async_model_loaded([check4]()
+           {
+               ModelMeshSkin& cubeskin = check4->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+           });
+       check4->setLabel("checkpoint");
+       worldLst->push_back(check4);
+
+       WO* check5 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+       check5->setPosition(Vector(-300, 80, 100));
+       check5->rotateAboutRelY(1.57);
+       check5->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       check5->upon_async_model_loaded([check5]()
+           {
+               ModelMeshSkin& cubeskin = check5->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+           });
+       check5->setLabel("checkpoint");
+       worldLst->push_back(check5);
 
    }
 
@@ -450,4 +486,16 @@ void GLViewFinalProject::createFinalProjectWayPoints()
    WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
    wayPt2->setPosition(Vector(-50, 0, 40));
    worldLst->push_back(wayPt2);
+
+   WOWayPointSpherical* wayPt3 = WOWayPointSphericalDerived::New(params, 8);
+   wayPt3->setPosition(Vector(-150, 0, 80));
+   worldLst->push_back(wayPt3);
+
+   WOWayPointSpherical* wayPt4 = WOWayPointSphericalDerived::New(params, 8);
+   wayPt4->setPosition(Vector(-250, 40, 100));
+   worldLst->push_back(wayPt4);
+
+   WOWayPointSpherical* wayPt5 = WOWayPointSphericalDerived::New(params, 8);
+   wayPt5->setPosition(Vector(-300, 80, 100));
+   worldLst->push_back(wayPt5);
 }
