@@ -11,6 +11,7 @@
 namespace Aftr
 {
    class Camera;
+   class WOGUILabel;
 
 class GLViewFinalProject : public GLView
 {
@@ -26,9 +27,19 @@ public:
    virtual void onMouseMove( const SDL_MouseMotionEvent& e );
    virtual void onKeyDown( const SDL_KeyboardEvent& key );
    virtual void onKeyUp( const SDL_KeyboardEvent& key );
+   virtual void onJoyButtonDown(const SDL_JoyButtonEvent& key);
+   virtual void onJoyButtonUp(const SDL_JoyButtonEvent& key);
+   //virtual void onControllerAxisMotion(const SDL_ControllerAxisEvent& joy);
+   //virtual void onJoyHatMotion(const SDL_JoyHatEvent& joy);
+   //virtual void onJoyBallMotion(const SDL_JoyBallEvent& joy);
+   //virtual void onControllerButtonDown(const SDL_ControllerButtonEvent& button);
+
+
+
 
 protected:
    GLViewFinalProject( const std::vector< std::string >& args );
+<<<<<<< HEAD
    virtual void onCreate();
 
    XrInstance xrInstance;
@@ -37,6 +48,12 @@ protected:
    XrViewConfigurationView* viewconfig_views;
    XrEventDataBuffer runtime_event;
    bool sessionRunning = false;
+=======
+   virtual void onCreate();  
+   WOGUILabel* timerlabel;
+
+>>>>>>> master
 };
+
 
 } //namespace Aftr
