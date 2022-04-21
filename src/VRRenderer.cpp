@@ -12,6 +12,8 @@
 //#include "Model.h"
 //#include "WOLight.h"
 //#include "SelectionQueryResult.h"
+#include "PxPhysicsAPI.h"
+#include "vehicle/PxVehicleSDK.h"
 
 using namespace Aftr;
 
@@ -159,17 +161,119 @@ void VRRenderer::onCreate(XrSession session, XrViewConfigurationView* viewconfig
 	std::cout << "END ON CREATE RENDERER\n\n\n";
 }
 
-void setCameraPose(Camera& cam, XrPosef xrpose)
+void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 {
-	float scale = 2;
-	cam.setPosition(scale * xrpose.position.x, scale * xrpose.position.y, scale * xrpose.position.z);
+	Aftr::Mat4 result;
+
+	float nearZ = cam.getCameraNearClippingPlaneDistance();
+	float farZ = cam.getCameraFarClippingPlaneDistance();
+
+	const float tanAngleLeft = tanf(fov.angleLeft);
+	const float tanAngleRight = tanf(fov.angleRight);
+
+	const float tanAngleDown = tanf(fov.angleDown);
+	const float tanAngleUp = tanf(fov.angleUp);
+
+	const float tanAngleWidth = tanAngleRight - tanAngleLeft;
+
+	// Set to tanAngleDown - tanAngleUp for a clip space with positive Y
+	// down (Vulkan). Set to tanAngleUp - tanAngleDown for a clip space with
+	// positive Y up (OpenGL / D3D / Metal).
+	const float tanAngleHeight =
+		 (tanAngleUp - tanAngleDown);
+
+	// Set to nearZ for a [-1,1] Z clip space (OpenGL / OpenGL ES).
+	// Set to zero for a [0,1] Z clip space (Vulkan / D3D / Metal).
+	const float offsetZ = nearZ;
+
+	if (farZ <= nearZ) {
+		// place the far plane at infinity
+		result[0] = 2 / tanAngleWidth;
+		result[4] = 0;
+		result[8] = (tanAngleRight + tanAngleLeft) / tanAngleWidth;
+		result[12] = 0;
+
+		result[1] = 0;
+		result[5] = 2 / tanAngleHeight;
+		result[9] = (tanAngleUp + tanAngleDown) / tanAngleHeight;
+		result[13] = 0;
+
+		result[2] = 0;
+		result[6] = 0;
+		result[10] = -1;
+		result[14] = -(nearZ + offsetZ);
+
+		result[3] = 0;
+		result[7] = 0;
+		result[11] = -1;
+		result[15] = 0;
+	}
+	else {
+		// normal projection
+		result[0] = 2 / tanAngleWidth;
+		result[4] = 0;
+		result[8] = (tanAngleRight + tanAngleLeft) / tanAngleWidth;
+		result[12] = 0;
+
+		result[1] = 0;
+		result[5] = 2 / tanAngleHeight;
+		result[9] = (tanAngleUp + tanAngleDown) / tanAngleHeight;
+		result[13] = 0;
+
+		result[2] = 0;
+		result[6] = 0;
+		result[10] = -(farZ + offsetZ) / (farZ - nearZ);
+		result[14] = -(farZ * (nearZ + offsetZ)) / (farZ - nearZ);
+
+		result[3] = 0;
+		result[7] = 0;
+		result[11] = -1;
+		result[15] = 0;
+	}
+
+
+	physx::PxTransform transform(physx::PxVec3(xrpose.position.x, xrpose.position.y, xrpose.position.z), physx::PxQuat(xrpose.orientation.x, xrpose.orientation.y, xrpose.orientation.z, xrpose.orientation.w));
+
+	physx::PxMat44 pxmat(transform);
+	Aftr::Mat4 aftrmat;
+
+	for (int i = 0; i < 16; ++i)
+	{
+		aftrmat[i] = pxmat(i % 4, i / 4);
+	}
+
+
+	//cam.setPose(aftrmat);
+	cam.setCameraProjectionMatrix((result * aftrmat).getPtr());
+
+	//float temp1, temp2, temp3;
+
+	//temp1 = aftrmat[4];
+	//temp2 = aftrmat[5];
+	//temp3 = aftrmat[6];
+
+	//aftrmat[4] = aftrmat[8];
+	//aftrmat[5] = aftrmat[9];
+	//aftrmat[6] = aftrmat[10];
+
+	//aftrmat[8] = temp1;
+	//aftrmat[9] = temp2;
+	//aftrmat[10] = temp3;
+
+
+
+	//cam.setPose(aftrmat);
+
+	//float scale = 2;
+
+	//cam.setPosition(scale * xrpose.position.x, scale * xrpose.position.y, scale * xrpose.position.z);
 	
-	Aftr::Mat4 temp = cam.getPose();
+	//Aftr::Mat4 temp = cam.getPose();
 	
-	float qw = xrpose.orientation.w;
-	float qx = xrpose.orientation.x;
-	float qy = xrpose.orientation.z; 
-	float qz = xrpose.orientation.y;
+	//float qw = xrpose.orientation.w;
+	//float qx = xrpose.orientation.x;
+	//float qy = xrpose.orientation.z; 
+	//float qz = xrpose.orientation.y;
 
 	// , , 
 
@@ -185,7 +289,7 @@ void setCameraPose(Camera& cam, XrPosef xrpose)
 	//temp[9] = 2 * (q2 * q3 + q0 * q1);
 	//temp[10] = 2 * (q0 * q0 + q3 * q3) - 1;
 
-	temp[0] = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
+	/*temp[0] = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
 	temp[1] = 2.0f * qx * qy - 2.0f * qz * qw;
 	temp[2] = 2.0f * qx * qz + 2.0f * qy * qw;
 
@@ -195,13 +299,13 @@ void setCameraPose(Camera& cam, XrPosef xrpose)
 
 	temp[8] = 2.0f * qx * qz - 2.0f * qy * qw;
 	temp[9] = 2.0f * qy * qz + 2.0f * qx * qw;
-	temp[10] = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
+	temp[10] = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;*/
 
 
-	std::cout << "before: " << cam.getPose() << std::endl;
-	std::cout << "after: " << temp << std::endl;
+	//std::cout << "before: " << cam.getPose() << std::endl;
+	//std::cout << "after: " << temp << std::endl;
 
-	cam.setPose(temp);
+	//cam.setPose(temp);
 }
 
 void VRRenderer::render(Camera& cam, WorldContainer& wList)
@@ -346,7 +450,7 @@ void VRRenderer::render(Camera& cam, WorldContainer& wList)
 
 			// Set projection matrix
 			//std::cout << "x: " << views[i].pose.position.x << " y: " << views[i].pose.position.y << " z: " << views[i].pose.position.z << std::endl;
-			setCameraPose(cam, views[i].pose);
+			setCameraPose(cam, views[i].pose, views[i].fov );
 
 			glViewport(0, 0, viewconfig_views[i].recommendedImageRectWidth, viewconfig_views[i].recommendedImageRectHeight);
 			wList.renderWorld(cam);
@@ -360,7 +464,7 @@ void VRRenderer::render(Camera& cam, WorldContainer& wList)
 			glClearColor(.0f, 0.0f, 0.2f, 1.0f);
 
 			// Set projection matrix
-			setCameraPose(cam, views[i].pose);
+			setCameraPose(cam, views[i].pose, views[i].fov);
 
 			glViewport(0, 0, viewconfig_views[i].recommendedImageRectWidth, viewconfig_views[i].recommendedImageRectHeight);
 			wList.renderWorld(cam);

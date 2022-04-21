@@ -163,7 +163,7 @@ void GLViewFinalProject::onCreate()
 
     std::cout << "CREATE SESSION RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << " " << result << std::endl;
 
-    XrPosef identity_pose = { .orientation = {.x = 0, .y = 0, .z = 0, .w = -1.0},
+    XrPosef identity_pose = { .orientation = {.x = 0, .y = 0, .z = 0, .w = 1},
                                 .position = {.x = 0, .y = 0, .z = -5} };
 
     XrReferenceSpaceCreateInfo play_space_create_info = { .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
@@ -352,14 +352,14 @@ void Aftr::GLViewFinalProject::loadMap()
       worldLst->push_back( wo );
    }
 
-   {
-       //Create a model of earth
-       WO* wo = WO::New(ManagerEnvironmentConfiguration::getSMM() + "/models/sphereR5Earth.wrl", Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       wo->setPosition(-3, -3, 5);
-       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       wo->setLabel("Earth");
-       worldLst->push_back(wo);
-   }
+   //{
+   //    //Create a model of earth
+   //    WO* wo = WO::New(ManagerEnvironmentConfiguration::getSMM() + "/models/sphereR5Earth.wrl", Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+   //    wo->setPosition(-3, -3, 5);
+   //    wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+   //    wo->setLabel("Earth");
+   //    worldLst->push_back(wo);
+   //}
 
    //createFinalProjectWayPoints();
 }
