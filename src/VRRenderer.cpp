@@ -167,6 +167,9 @@ void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 
 	float nearZ = cam.getCameraNearClippingPlaneDistance();
 	float farZ = cam.getCameraFarClippingPlaneDistance();
+	
+	nearZ = 0.05f;
+	farZ = 100.0f;
 
 	const float tanAngleLeft = tanf(fov.angleLeft);
 	const float tanAngleRight = tanf(fov.angleRight);
@@ -242,25 +245,38 @@ void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 		aftrmat[i] = pxmat(i % 4, i / 4);
 	}
 
+	//XrMatrix4x4f_CreateProjection();
 
+	//cam.setCameraProjectionMatrix(aftrmat.getPtr());
 	//cam.setPose(aftrmat);
-	cam.setCameraProjectionMatrix((result * aftrmat).getPtr());
 
-	//float temp1, temp2, temp3;
-
-	//temp1 = aftrmat[4];
-	//temp2 = aftrmat[5];
-	//temp3 = aftrmat[6];
-
-	//aftrmat[4] = aftrmat[8];
-	//aftrmat[5] = aftrmat[9];
-	//aftrmat[6] = aftrmat[10];
-
-	//aftrmat[8] = temp1;
-	//aftrmat[9] = temp2;
-	//aftrmat[10] = temp3;
+	Aftr::Mat4 result2 = result * aftrmat;
+	//Aftr::Mat4 result2 = result * cam.getPose();
+	
 
 
+	//std::cout << result2 << std::endl;
+	//std::cout << cam.getCameraProjectionMatrix() << std::endl << std::endl;
+	
+	//cam.setCameraViewMatrix(result2.getPtr());
+	
+	//cam.setCameraProjectionMatrix((result * aftrmat).getPtr());
+
+	float temp1, temp2, temp3;
+
+	temp1 = result2[4];
+	temp2 = result2[5];
+	temp3 = result2[6];
+
+	//result2[4] = result2[8];
+	//result2[5] = result2[9];
+	//result2[6] = result2[10];
+
+	//result2[8] = temp1;
+	//result2[9] = temp2;
+	//result2[10] = temp3;
+
+	cam.setCameraProjectionMatrix(result2.getPtr());
 
 	//cam.setPose(aftrmat);
 
@@ -448,13 +464,18 @@ void VRRenderer::render(Camera& cam, WorldContainer& wList)
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, images[i][acquired_index].image, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			Aftr::Mat4 originalPose = cam.getPose();
+
 			// Set projection matrix
 			//std::cout << "x: " << views[i].pose.position.x << " y: " << views[i].pose.position.y << " z: " << views[i].pose.position.z << std::endl;
 			setCameraPose(cam, views[i].pose, views[i].fov );
 
 			glViewport(0, 0, viewconfig_views[i].recommendedImageRectWidth, viewconfig_views[i].recommendedImageRectHeight);
 			wList.renderWorld(cam);
+			//this->renderScene(cam, wList);
 			leftFBO->unbind();
+
+			//cam.setPose(originalPose);
 		}
 		else
 		{
@@ -463,12 +484,18 @@ void VRRenderer::render(Camera& cam, WorldContainer& wList)
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glClearColor(.0f, 0.0f, 0.2f, 1.0f);
 
+			Aftr::Mat4 originalPose = cam.getPose();
+
 			// Set projection matrix
 			setCameraPose(cam, views[i].pose, views[i].fov);
 
+
 			glViewport(0, 0, viewconfig_views[i].recommendedImageRectWidth, viewconfig_views[i].recommendedImageRectHeight);
 			wList.renderWorld(cam);
+			//this->renderScene(cam, wList);
 			rightFBO->unbind();
+
+			//cam.setPose(originalPose);
 		}
 
 

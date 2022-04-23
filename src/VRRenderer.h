@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 #include "AftrGLRenderer.h"
 
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -7,6 +9,8 @@
 #include "windows.h"
 #include "openxr.h"
 #include "openxr_platform.h"
+#include "openxr_platform_defines.h"
+#include "openxr_reflection.h"
 
 
 namespace Aftr
@@ -41,3 +45,4 @@ protected:
 };
 
 }
+
