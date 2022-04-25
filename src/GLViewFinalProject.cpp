@@ -38,6 +38,7 @@
 #include <ratio>
 #include <chrono>
 #include "WOGUILabel.h"
+#include "irrKlang.h"
 
 //SDL_JoyButtonEvent whichbutton;
 bool rb = false;
@@ -53,6 +54,8 @@ int checkpoint = 0;
 
 
 
+
+
 class WOWayPointSphericalDerived : public WOWayPointSpherical {
 public:
     void onTrigger() {
@@ -63,7 +66,10 @@ public:
             std::cout << time_span << std::endl;
             lapover = true;
         }
-        std::cout << "Checkpoint " << checkpoint << " Reached\n";
+           std::string checkpointSound(ManagerEnvironmentConfiguration::getLMM() + "/sounds/checkpoint-sound.ogg");
+           irrklang::ISoundEngine* soundEngine = irrklang::createIrrKlangDevice();
+           irrklang::ISound* sound = soundEngine->play2D(checkpointSound.c_str());
+
     }
     WOWayPointSphericalDerived(const WayPointParametersBase& params, float radius) : IFace(this), WOWayPointSpherical(params, radius) {
         ;
@@ -132,6 +138,9 @@ void GLViewFinalProject::updateWorld()
            std::string curlaptime = std::to_string(std::chrono::duration<double>(t2 - t1).count()) + 's';
            this->timerlabel->setText(curlaptime);
        }
+   }
+   if (lapover) {
+       this->soundEngine->stopAllSounds();
    }
 }
 
@@ -466,7 +475,9 @@ void Aftr::GLViewFinalProject::loadMap()
        worldLst->push_back(check5);
 
    }
-
+   std::string music(ManagerEnvironmentConfiguration::getLMM() + "/sounds/music_astro_race.ogg");
+   this->soundEngine = irrklang::createIrrKlangDevice();
+   irrklang::ISound* sound = soundEngine->play2D(music.c_str());
 
    createFinalProjectWayPoints();
 }
