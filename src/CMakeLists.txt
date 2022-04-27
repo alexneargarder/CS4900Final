@@ -93,6 +93,8 @@ IF( WIN32 ) #MSVC Compiler library paths
                debug "${AFTR_USERLAND_LIB_PATH}/debug/PhysXExtensions_static_64.lib"
                optimized "${AFTR_USERLAND_LIB_PATH}/release/PhysXCooking_64.lib"
                debug "${AFTR_USERLAND_LIB_PATH}/debug/PhysXCooking_64.lib"
+               optimized "${AFTR_USERLAND_LIB_PATH}/openxr_loaderd.lib"
+               debug "${AFTR_USERLAND_LIB_PATH}/openxr_loaderd.lib"
                 #optimized "${AFTR_USERLAND_LIB_PATH}/mySampleLibraryNeededInThisModule.lib"
                 #    debug "${AFTR_USERLAND_LIB_PATH}/mySampleLibraryNeededInThisModule_debug.lib"
                 #optimized "${CMAKE_SOURCE_DIR}/lib${AFTR_NBITS}/myLocalLib.lib" #Located in ../lib64/ or ../lib32/
@@ -117,6 +119,7 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PRIVATE
                            "${AFTR_USR_INCLUDE_DIR}/../irrklang/include/"
                            "${AFTR_USR_INCLUDE_DIR}/../physx/include/"
                            "${AFTR_USR_INCLUDE_DIR}/../pxshared/include/"
+                           "${AFTR_USR_INCLUDE_DIR}/../openxr/"
                            #"${AFTR_USR_INCLUDE_DIR}"
                            #"${CMAKE_SOURCE_DIR}/../my3rdPartyLib/include/"
                           )

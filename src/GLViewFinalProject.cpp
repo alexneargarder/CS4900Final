@@ -40,6 +40,15 @@
 #include "WOGUILabel.h"
 #include "irrKlang.h"
 
+#ifdef VR
+#include "SDL_syswm.h"
+#include "AftrOpenGLIncludes.h"
+#include "VRRenderer.h"
+#endif
+
+#include "WOPhysxSphere.h"
+
+
 //SDL_JoyButtonEvent whichbutton;
 bool rb = false;
 bool lb = false;
@@ -52,6 +61,61 @@ std::chrono::steady_clock::time_point t2;
 bool lapover = false;
 int checkpoint = 0;
 
+std::vector< WOPhysxBox* > projectiles;
+std::vector< WOPhysxSphere* > asteroids;
+int projectileToDelete = -1;
+int asteroidToDelete = -1;
+
+class laserContactEvent : public physx::PxSimulationEventCallback
+{
+    void onConstraintBreak(physx::PxConstraintInfo* constraints, physx::PxU32 count)
+    {
+
+    }
+
+    void onWake(physx::PxActor** actors, physx::PxU32 count)
+    {
+
+    }
+
+    void onSleep(physx::PxActor** actors, physx::PxU32 count) {}
+
+    void onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count) {}
+
+    void onAdvance(const physx::PxRigidBody* const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) {}
+
+    void onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
+    {
+        for (physx::PxU32 i = 0; i < nbPairs; i++)
+        {
+            const physx::PxContactPair& cp = pairs[i];
+
+            if (cp.events & physx::PxPairFlag::eNOTIFY_TOUCH_FOUND)
+            {
+                for (int x = 0; x < projectiles.size(); ++x)
+                {
+                    if ((pairHeader.actors[0] == projectiles[x]->actor) ||
+                        (pairHeader.actors[1] == projectiles[x]->actor))
+                    {
+                        physx::PxActor* otherActor = (projectiles[x]->actor == pairHeader.actors[0]) ?
+                            pairHeader.actors[1] : pairHeader.actors[0];
+
+                        for (int y = 0; y < asteroids.size(); ++y)
+                        {
+                            if (asteroids[y]->actor == otherActor)
+                            {
+                                asteroidToDelete = y;
+                                projectileToDelete = x;
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+            }
+        }
+    }
+};
 
 
 
@@ -93,16 +157,170 @@ GLViewFinalProject* GLViewFinalProject::New( const std::vector< std::string >& a
    return glv;
 }
 
+physx::PxFilterFlags contactReportFilterShader(
+    physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0,
+    physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
+    physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
+{
+    // let triggers through
+    if (physx::PxFilterObjectIsTrigger(attributes0) || physx::PxFilterObjectIsTrigger(attributes1))
+    {
+        pairFlags = physx::PxPairFlag::eTRIGGER_DEFAULT;
+        return physx::PxFilterFlag::eDEFAULT;
+    }
+    // generate contacts for all that were not filtered above
+    pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
 
+    // trigger the contact callback for pairs (A,B) where
+    // the filtermask of A contains the ID of B and vice versa.
+    if ((filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1))
+        pairFlags |= physx::PxPairFlag::eNOTIFY_TOUCH_FOUND;
+
+    return physx::PxFilterFlag::eDEFAULT;
+}
 
 GLViewFinalProject::GLViewFinalProject( const std::vector< std::string >& args ) : GLView( args )
 {
-   
-}
+    physx_foundation = PxCreateFoundation(PX_PHYSICS_VERSION, alloc, errorcall);
+    physx::PxTolerancesScale ts;
+    ts.length = 1;
+    ts.speed = 5;
+    physics = PxCreatePhysics(PX_PHYSICS_VERSION, *physx_foundation, ts, false);
+    physx::PxSceneDesc sc(physics->getTolerancesScale());
+    sc.filterShader = physx::PxDefaultSimulationFilterShader;
+    sc.cpuDispatcher = physx::PxDefaultCpuDispatcherCreate(2);
+    sc.kineKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
+    sc.filterShader = contactReportFilterShader;
 
+
+    physics_scene = physics->createScene(sc);
+    physics_scene->setFlag(physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS, true);
+}
 
 void GLViewFinalProject::onCreate()
 {
+#ifdef VR
+    XrFormFactor form_factor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+
+    XrViewConfigurationType view_type = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+
+    XrReferenceSpaceType play_space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    play_space = XR_NULL_HANDLE;
+
+    xrInstance = XR_NULL_HANDLE;
+    XrSystemId system_id = XR_NULL_SYSTEM_ID;
+    xrSession = XR_NULL_HANDLE;
+
+    viewconfig_views = NULL;
+
+    const char* enabled_exts[1] = { XR_KHR_OPENGL_ENABLE_EXTENSION_NAME };
+
+    XrInstanceCreateInfo instance_create_info = {
+        .type = XR_TYPE_INSTANCE_CREATE_INFO,
+        .next = NULL,
+        .createFlags = 0,
+        .applicationInfo =
+            {
+            .applicationName = "Space Race",
+            .applicationVersion = 1,
+            .engineName = "AftrBurner",
+            .engineVersion = 0,
+            .apiVersion = XR_CURRENT_API_VERSION,
+        },
+        .enabledApiLayerCount = 0,
+        .enabledApiLayerNames = NULL,
+        .enabledExtensionCount = 1,
+        .enabledExtensionNames = enabled_exts,
+    };
+
+    XrResult result = xrCreateInstance(&instance_create_info, &xrInstance);
+
+    std::cout << "CREATE INSTANCE RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    XrSystemGetInfo system_get_info = {
+        .type = XR_TYPE_SYSTEM_GET_INFO, .next = NULL, .formFactor = form_factor };
+
+    result = xrGetSystem(xrInstance, &system_get_info, &system_id);
+
+    std::cout << "GET SYSTEM INFO RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    // Check graphics requirements
+    XrGraphicsRequirementsOpenGLKHR opengl_reqs = { .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
+                                                   .next = NULL };
+   
+
+    PFN_xrGetOpenGLGraphicsRequirementsKHR pfnGetOpenGLGraphicsRequirementsKHR = nullptr;
+    xrGetInstanceProcAddr(xrInstance, "xrGetOpenGLGraphicsRequirementsKHR",
+        reinterpret_cast<PFN_xrVoidFunction*>(&pfnGetOpenGLGraphicsRequirementsKHR));
+
+    result = pfnGetOpenGLGraphicsRequirementsKHR(xrInstance, system_id, &opengl_reqs);
+
+    std::cout << "GET GRAPHICS REQUIREMENTS RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+
+    if (SDL_GetWindowWMInfo(ManagerWindowing::getCurrentWindow(), &info) < 0)
+    {
+        std::cout << "GETTING INFO FAILED" << std::endl;
+    }
+
+    uint32_t view_count = 0;
+    result = xrEnumerateViewConfigurationViews( xrInstance, system_id, view_type, 0, &view_count, NULL );
+
+    std::cout << "GET VIEW COUNT RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+    std::cout << "VIEW COUNT: " << view_count << std::endl;
+
+    viewconfig_views = new XrViewConfigurationView[view_count];
+    for (uint32_t i = 0; i < view_count; i++) {
+        viewconfig_views[i].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
+        viewconfig_views[i].next = NULL;
+    }
+
+    result = xrEnumerateViewConfigurationViews(xrInstance, system_id, view_type, view_count,
+        &view_count, viewconfig_views);
+
+    std::cout << "GET VIEW CONFIGURATIONS RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+    std::cout << viewconfig_views[0].recommendedImageRectHeight << " " << viewconfig_views[0].recommendedImageRectWidth << std::endl;
+
+    HWND hwnd = info.info.win.window;    
+
+    HDC handle = GetDC(hwnd);
+    HGLRC context = wglGetCurrentContext();
+
+    std::cout << "IS WINDOW?: " << IsWindow(hwnd) << std::endl;
+
+    // Create graphics binding
+    XrGraphicsBindingOpenGLWin32KHR graphics_binding_gl = {
+        .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
+        .next = NULL,
+        .hDC = handle,
+        .hGLRC = context
+    };
+    
+    
+    XrSessionCreateInfo session_create_info = {
+        .type = XR_TYPE_SESSION_CREATE_INFO, .next = &graphics_binding_gl, .systemId = system_id };
+
+    result = xrCreateSession(xrInstance, &session_create_info, &xrSession);
+
+    std::cout << "CREATE SESSION RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << " " << result << std::endl;
+
+    XrPosef identity_pose = { .orientation = {.x = 0, .y = 0, .z = 0, .w = 1},
+                                .position = {.x = 0, .y = 0, .z = -5} };
+
+    XrReferenceSpaceCreateInfo play_space_create_info = { .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+                                                         .next = NULL,
+                                                         .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL,
+                                                         //.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
+                                                         .poseInReferenceSpace = identity_pose };
+
+    result = xrCreateReferenceSpace(xrSession, &play_space_create_info, &play_space);
+
+    std::cout << "CREATE PLAYSPACE RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << " " << result << std::endl;
+    //ManagerEnvironmentConfiguration::registerVariable("stereoseparation", "0.05f");
+#endif
 
    if( this->pe != NULL )
    {
@@ -113,6 +331,7 @@ void GLViewFinalProject::onCreate()
    }
    this->setActorChaseType( STANDARDEZNAV ); //Default is STANDARDEZNAV mode
    //this->setNumPhysicsStepsPerRender( 0 ); //pause physics engine on start up; will remain paused till set to 1
+
 }
 
 
@@ -120,17 +339,19 @@ GLViewFinalProject::~GLViewFinalProject()
 {
 }
 
-
 void GLViewFinalProject::updateWorld()
 {
    GLView::updateWorld(); //Just call the parent's update world first.
                           //If you want to add additional functionality, do it after
                           //this call.
+
    if (rb) {
-       this->cam->moveInLookDirection(this->cam->getCameraVelocity());
+       camera->addForce(physx::PxVec3(cam->getLookDirection().x, cam->getLookDirection().y, cam->getLookDirection().z), physx::PxForceMode::eVELOCITY_CHANGE);
+       //this->cam->moveInLookDirection(this->cam->getCameraVelocity());
    }
    if (lb) {
-       this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
+       camera->addForce(camera->getLinearVelocity() * -0.1, physx::PxForceMode::eVELOCITY_CHANGE);
+       //this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
    }
    if (!start && !lapover) {
        if (this->timerlabel != NULL) {
@@ -141,6 +362,73 @@ void GLViewFinalProject::updateWorld()
    }
    if (lapover) {
        this->soundEngine->stopAllSounds();
+}
+#ifdef VR
+   // Check current state of openxr
+   XrEventDataBuffer runtime_event = { .type = XR_TYPE_EVENT_DATA_BUFFER, .next = NULL };
+   XrResult poll_result = xrPollEvent( xrInstance, &runtime_event);
+
+   if (poll_result == XR_SUCCESS)
+   {
+       switch (runtime_event.type)
+       {
+       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+           XrEventDataSessionStateChanged* event = (XrEventDataSessionStateChanged*)&runtime_event;
+           switch (event->state)
+           {
+           case XR_SESSION_STATE_READY:
+               if (!sessionRunning) {
+                   XrSessionBeginInfo session_begin_info = {
+                       .type = XR_TYPE_SESSION_BEGIN_INFO,
+                       .next = NULL,
+                       .primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO };
+                   XrResult result = xrBeginSession(xrSession, &session_begin_info);
+
+                   std::cout << "BEGIN SESSION RESULT: " << ((result == XR_SUCCESS) ? "succeed" : "fail") << std::endl;
+
+                   delete glRenderer;
+                   glRenderer = VRRenderer::New(xrSession, viewconfig_views, play_space);
+               }
+               break;
+           default:
+               std::cout << "SOME OTHER STATE CHANGE " << event->state << std::endl;
+           }
+       }
+       default:
+           std::cout << "SOME OTHER THING? " << runtime_event.type << std::endl;
+           break;
+       }
+   }
+   else if (poll_result != XR_EVENT_UNAVAILABLE)
+   {
+       std::cout << "FAILED TO POLL " << poll_result << std::endl;
+   }
+#endif
+
+   //std::cout << cam->getPosition() << std::endl;
+
+   // Handle physics simulations
+   if (firstTime || (physics_scene != nullptr && physics_scene->fetchResults(true)))
+   {
+       physics_scene->simulate(ManagerSDLTime::getTimeSinceLastMainLoopIteration() / 1000.0f);
+       firstTime = false;
+   }
+
+   if (physics_controls)
+   {
+       cam->setPosition(camera->getGlobalPose().p.x, camera->getGlobalPose().p.y, camera->getGlobalPose().p.z);
+   }
+
+   // Move lasers forward
+   for (int i = 0; i < projectiles.size(); ++i)
+   {
+       //projectiles[i]->moveRelative(projectiles[i]->getLookDirection());
+       //projectiles[i]->setPosition( projectiles[i]->getPosition() + cam->getLookDirection());
+   }
+
+   if (projectileToDelete != -1 && asteroidToDelete != -1)
+   {
+       breakAsteroid();
    }
 }
 
@@ -177,21 +465,38 @@ void GLViewFinalProject::onKeyDown( const SDL_KeyboardEvent& key )
 
    if( key.keysym.sym == SDLK_1 )
    {
-       this->cam->moveInLookDirection(this->cam->getCameraVelocity());
+       //this->cam->moveInLookDirection(this->cam->getCameraVelocity());
+       camera->addForce( physx::PxVec3( cam->getLookDirection().x, cam->getLookDirection().y, cam->getLookDirection().z ), physx::PxForceMode::eVELOCITY_CHANGE );
        if (start) {
            t1 = std::chrono::steady_clock::now();
            start = false;
        }
    }
-   if (key.keysym.sym == SDLK_2)
+   else if (key.keysym.sym == SDLK_2)
    {
-       this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
+       //this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
+       //camera->addForce(physx::PxVec3(-1 * cam->getLookDirection().x, -1 * cam->getLookDirection().y, -1 * cam->getLookDirection().z), physx::PxForceMode::eVELOCITY_CHANGE);
+       camera->addForce(camera->getLinearVelocity() * -0.1, physx::PxForceMode::eVELOCITY_CHANGE);
+       
        /*if (!start) {
            t2 = std::chrono::steady_clock::now();
            std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
            std::cout << time_span << std::endl;
            lapover = true;
        }*/
+   }
+   else if (key.keysym.sym == SDLK_3)
+   {
+       fireLaser();
+   }
+   else if (key.keysym.sym == SDLK_p)
+   {
+       std::cout << "Current Pos: " << cam->getPosition() << std::endl;
+       std::cout << cam->getPose() << std::endl;
+   }
+   else if (key.keysym.sym == SDLK_d)
+   {
+       physics_controls = !physics_controls;
    }
 }
 
@@ -245,7 +550,71 @@ void GLViewFinalProject::onJoyButtonUp(const SDL_JoyButtonEvent& key)
 
 }
 
+void GLViewFinalProject::setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask)
+{
+    physx::PxFilterData filterData;
+    filterData.word0 = filterGroup; // word0 = own ID
+    filterData.word1 = filterMask;  // word1 = ID mask to filter pairs that trigger a contact callback;
+    const physx::PxU32 numShapes = actor->getNbShapes();
+    physx::PxShape** shapes = new physx::PxShape * [numShapes];
+    actor->getShapes(shapes, numShapes);
+    for (physx::PxU32 i = 0; i < numShapes; i++)
+    {
+        physx::PxShape* shape = shapes[i];
+        shape->setSimulationFilterData(filterData);
+    }
+    delete shapes;
+}
 
+void GLViewFinalProject::fireLaser()
+{
+    {
+        //WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/laser/my laser.blend", Vector(1, 1, 1), physics, physics_scene, cam->getPosition() + cam->getLookDirection() * 5);
+        WOPhysxBox* wo = WOPhysxBox::New(ManagerEnvironmentConfiguration::getLMM() + "/models/laser/mylaser.obj", Vector(0.5, 0.5, 0.5), physics, physics_scene, cam, camera );
+        wo->upon_async_model_loaded([this, wo]() {
+            setupFiltering(wo->actor, FILTER::LASER, FILTER::ASTEROID);
+
+            });
+        //wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        worldLst->push_back(wo);
+        projectiles.push_back(wo);
+    }
+}
+
+void GLViewFinalProject::breakAsteroid()
+{
+    worldLst->eraseViaWOptr(asteroids[asteroidToDelete]);
+    worldLst->eraseViaWOptr(projectiles[projectileToDelete]);
+
+    //physx::PxVec3 v = projectiles[projectileToDelete]->actor->getLinearVelocity();
+
+    physics_scene->removeActor(*asteroids[asteroidToDelete]->actor);
+    physics_scene->removeActor(*projectiles[projectileToDelete]->actor);
+
+
+    //projectiles[projectileToDelete]->actor->clearForce();
+    //[projectileToDelete]->actor->addForce({ projectiles[projectileToDelete]->getLookDirection().x, projectiles[projectileToDelete]->getLookDirection().y, projectiles[projectileToDelete]->getLookDirection().z });
+
+
+    for (int i = 0; i < 4; ++i)
+    {
+        Vector force( ((rand() % 1000) - 500)/1000.0, ((rand() % 1000) - 500) / 1000.0, ((rand() % 1000) - 500) / 1000.0 );
+        //Vector subPosition = asteroids[asteroidToDelete]->getPosition() + (directions[i] * 20);
+        //std::cout << "position: " << subPosition << std::endl;
+        WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/asteroid/10464_Asteroid_v1_Iterations-2.obj", { 0.0005f, 0.0005f, 0.0005f }, physics, physics_scene, asteroids[asteroidToDelete]->getPosition() + force * 5);
+        wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        wo->upon_async_model_loaded([this, force, wo]()
+            {
+                setupFiltering(wo->actor, FILTER::ASTEROID, FILTER::LASER);
+                wo->actor->addForce(physx::PxVec3(force.x, force.y, force.z) * 100, physx::PxForceMode::eVELOCITY_CHANGE);
+            });
+        worldLst->push_back(wo);
+        asteroids.push_back(wo);
+    }
+
+    projectileToDelete = -1;
+    asteroidToDelete = -1;
+}
 
 /*void GLViewFinalProject::onControllerAxisMotion(const SDL_ControllerAxisEvent& joy)
 {
@@ -266,8 +635,6 @@ void GLViewFinalProject::onJoyHatMotion(const SDL_JoyHatEvent& joy)
 void GLViewFinalProject::onControllerButtonDown(const SDL_ControllerButtonEvent& button) {
     std::cout << "GLView::onControllerButtonDown" << (int)button.which << "   but:" << (int)button.button << "   state:PRESSED\n";
 }*/
-
-
 
 void Aftr::GLViewFinalProject::loadMap()
 {
@@ -478,6 +845,77 @@ void Aftr::GLViewFinalProject::loadMap()
    std::string music(ManagerEnvironmentConfiguration::getLMM() + "/sounds/music_astro_race.ogg");
    this->soundEngine = irrklang::createIrrKlangDevice();
    irrklang::ISound* sound = soundEngine->play2D(music.c_str());
+
+   std::vector< Aftr::Vector > obstacle_positions = { {-25, 1, 37}, {-67, 6, 40}, {-99, -9, 63}, {-168, 19, 83}, {-258, 82, 101}, {-216, 10, 94}, {-277, 50, 100} };
+   std::vector< Aftr::Vector > obstacle_scales = { {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f} };
+
+   for ( int i = 0; i < obstacle_positions.size(); ++i )
+   {
+       WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/asteroid/10464_Asteroid_v1_Iterations-2.obj", obstacle_scales[i], physics, physics_scene, obstacle_positions[i]);
+       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+       wo->upon_async_model_loaded([this, wo]()
+           {
+               setupFiltering(wo->actor, FILTER::ASTEROID, FILTER::LASER);
+           });
+       worldLst->push_back(wo);
+       asteroids.push_back(wo);
+   }
+
+   {
+       physx::PxMaterial* gMaterial = physics->createMaterial(0.5f, 0.5f, 0.6f);
+       physx::PxShape* shape = physics->createShape(physx::PxSphereGeometry(1), *gMaterial, true);
+
+       physx::PxTransform t({ cam->getPosition().x, cam->getPosition().y, cam->getPosition().z});
+
+       camera = physics->createRigidDynamic(t);
+       camera->attachShape(*shape);
+
+       physics_scene->addActor(*camera);
+   }
+
+   laserContactEvent* callback = new laserContactEvent;
+   physics_scene->setSimulationEventCallback(callback);
+
+   //{
+   //    //Create a model of earth
+   //    WO* wo = WO::New(ManagerEnvironmentConfiguration::getSMM() + "/models/sphereR5Earth.wrl", Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+   //    wo->setPosition(-3, -3, 5);
+   //    wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+   //    wo->setLabel("Earth");
+   //    worldLst->push_back(wo);
+   //}
+
+
+   //{ 
+   //   ////Create the infinite grass plane (the floor)
+   //   WO* wo = WO::New( grass, Vector( 3, 3, 3 ), MESH_SHADING_TYPE::mstFLAT );
+   //   wo->setPosition( Vector( 0, 0, 0 ) );
+   //   wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+   //   wo->upon_async_model_loaded( [wo]()
+   //      {
+   //         ModelMeshSkin& grassSkin = wo->getModel()->getModelDataShared()->getModelMeshes().at( 0 )->getSkins().at( 0 );
+   //         grassSkin.getMultiTextureSet().at( 0 )->setTextureRepeats( 5.0f );
+   //         grassSkin.setAmbient( aftrColor4f( 0.4f, 0.4f, 0.4f, 1.0f ) ); //Color of object when it is not in any light
+   //         grassSkin.setDiffuse( aftrColor4f( 1.0f, 1.0f, 1.0f, 1.0f ) ); //Diffuse color components (ie, matte shading color of this object)
+   //         grassSkin.setSpecular( aftrColor4f( 0.4f, 0.4f, 0.4f, 1.0f ) ); //Specular color component (ie, how "shiney" it is)
+   //         grassSkin.setSpecularCoefficient( 10 ); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
+   //      } );
+   //   wo->setLabel( "Grass" );
+   //   worldLst->push_back( wo );
+   //}
+
+   // Create the floor in the physics scene
+   /*{
+       physx::PxMaterial* gMaterial = physics->createMaterial(0.5f, 0.5f, 0.6f);
+       physx::PxRigidStatic* groundPlane = PxCreatePlane(*physics, physx::PxPlane(0, 0, 1, 0), *gMaterial);
+       physics_scene->addActor(*groundPlane);
+   
+   }*/
+
+   //physics_scene->setGravity(physx::PxVec3(0, 0, -5));
+
+   // Turn off axes
+   Axes::isVisible = false;
 
    createFinalProjectWayPoints();
 }
