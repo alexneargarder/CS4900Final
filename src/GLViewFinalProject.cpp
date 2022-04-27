@@ -918,7 +918,7 @@ void Aftr::GLViewFinalProject::loadMap()
    }
    std::string music(ManagerEnvironmentConfiguration::getLMM() + "/sounds/music_astro_race.ogg");
    this->soundEngine = irrklang::createIrrKlangDevice();
-   irrklang::ISound* sound = soundEngine->play2D(music.c_str());
+   irrklang::ISound* sound = soundEngine->play2D(music.c_str(), true);
 
    std::vector< Aftr::Vector > obstacle_positions = { {175, 1, 12}, {325, -2, 60}, {466, 22, 80}, {578, 62, 90}, {700, 82, 101}, {772, 74, 94}, {900, 52, 100} };
    std::vector< Aftr::Vector > obstacle_scales = { {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f} };
