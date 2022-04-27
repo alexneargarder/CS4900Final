@@ -38,6 +38,7 @@
 #include <ratio>
 #include <chrono>
 #include "WOGUILabel.h"
+#include <sstream>
 
 #ifdef VR
 #include "SDL_syswm.h"
@@ -433,7 +434,10 @@ void GLViewFinalProject::onResizeWindow( GLsizei width, GLsizei height )
 
 void GLViewFinalProject::onMouseDown( const SDL_MouseButtonEvent& e )
 {
-   GLView::onMouseDown( e );
+    if (!inMainMenu)
+    {
+        GLView::onMouseDown(e);
+    }
 }
 
 
@@ -483,7 +487,7 @@ void GLViewFinalProject::onKeyDown( const SDL_KeyboardEvent& key )
    }
    else if (key.keysym.sym == SDLK_p)
    {
-       std::cout << "Current Pos: " << cam->getPosition() << std::endl;
+       //std::cout << "Current Pos: " << cam->getPosition() << std::endl;
        std::cout << cam->getPose() << std::endl;
    }
    else if (key.keysym.sym == SDLK_d)
@@ -540,6 +544,22 @@ void GLViewFinalProject::onJoyButtonUp(const SDL_JoyButtonEvent& key)
 
     
 
+}
+
+void GLViewFinalProject::chooseLevel(int levelNum)
+{
+    this->chosenLevel = levelNum;
+    this->inMainMenu = false;
+
+    worldLst->eraseViaWOptr(whiteBackground);
+    worldLst->eraseViaWOptr(title);
+    
+    for (int i = 0; i < menuButtons.size(); ++i)
+    {
+        worldLst->eraseViaWOptr(menuButtons[i]);
+    }
+
+    // LOAD OBSTACLES FOR CHOSEN LEVEL
 }
 
 void GLViewFinalProject::setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask)
@@ -741,6 +761,7 @@ void Aftr::GLViewFinalProject::loadMap()
       wo->setLabel( "Grass" );
       worldLst->push_back( wo );
    }*/
+   
    this->timerlabel = WOGUILabel::New(NULL);
    this->timerlabel->setText("0.00s");
    this->timerlabel->setLabel("guiLabelTimer");
@@ -748,6 +769,31 @@ void Aftr::GLViewFinalProject::loadMap()
    this->timerlabel->setColor(255, 255, 255, 255);
    this->timerlabel->setFontSize(16);
    worldLst->push_back(timerlabel);
+
+   //WOGUI* test = WOGUI::New(NULL, 100, 100, "test");
+   whiteBackground = WO::New(ManagerEnvironmentConfiguration::getLMM() + "/models/laser/mylaser.obj", { 20, 20, 20 });
+   whiteBackground->setPosition(cam->getPosition() + cam->getLookDirection());
+   worldLst->push_back(whiteBackground);
+
+   title = WOGUILabel::New(NULL);
+   title->setPosition({ 0.5f, 0.9f, 0.5f });
+   title->setText("Space Race");
+   title->setColor(0, 0, 0, 255);
+   title->setFontSize(50.0f);
+   worldLst->push_back(title);
+
+   for ( int i = 0; i < 2; ++i)
+   {
+       MainMenuButton* levelButton = MainMenuButton::New(NULL, (i + 1), this);
+       std::stringstream text;
+       text << "Start Level " << (i + 1);
+       levelButton->setText(text.str());
+       levelButton->setPosition({ 0.5f, 0.7f - (0.3f * i), 0.5f});
+
+       worldLst->push_back(levelButton);
+       menuButtons.push_back(levelButton);
+   }
+   
 
    {
        ////Create new WO
