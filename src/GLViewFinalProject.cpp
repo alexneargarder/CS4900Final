@@ -57,9 +57,8 @@ bool dleft = false;
 bool dright = false;
 bool rollLeft = false;
 bool rollRight = false;
-
+bool lap = false;
 using namespace Aftr;
-bool course2 = false;
 bool start = true;
 std::chrono::steady_clock::time_point t1;
 std::chrono::steady_clock::time_point t2;
@@ -132,11 +131,21 @@ class WOWayPointSphericalDerived : public WOWayPointSpherical {
 public:
     void onTrigger() {
         checkpoint++;
-        if (checkpoint == 5) {
-            t2 = std::chrono::steady_clock::now();
-            std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
-            std::cout << time_span << std::endl;
-            lapover = true;
+        if (!lap) {
+            if (checkpoint == 5) {
+                t2 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
+                //std::cout << time_span << std::endl;
+                lapover = true;
+            }
+        }
+        else {
+            if (checkpoint == 18) {
+                t2 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(t2 - t1);
+                //std::cout << time_span << std::endl;
+                lapover = true;
+            }
         }
            std::string checkpointSound(ManagerEnvironmentConfiguration::getLMM() + "/sounds/checkpoint-sound.ogg");
            irrklang::ISoundEngine* soundEngine = irrklang::createIrrKlangDevice();
@@ -627,7 +636,9 @@ void GLViewFinalProject::chooseLevel(int levelNum)
 {
     this->chosenLevel = levelNum;
     this->inMainMenu = false;
-
+    if (levelNum == 2) {
+        lap = true;
+    }
     worldLst->eraseViaWOptr(whiteBackground);
     worldLst->eraseViaWOptr(title);
     
@@ -635,8 +646,205 @@ void GLViewFinalProject::chooseLevel(int levelNum)
     {
         worldLst->eraseViaWOptr(menuButtons[i]);
     }
+    std::vector< Aftr::Vector > obstacle_positions;
+    std::string ring(ManagerEnvironmentConfiguration::getLMM() + "/models/66-ring-ornament/vers(4)-men-design #RGmen_US 5_H 1.65_W 5.stl");
+    if (this->inMainMenu == false && this->chosenLevel == 1) {
+        obstacle_positions = { {175, 1, 12}, {325, -2, 60}, {466, 22, 80}, {578, 62, 90}, {700, 82, 101}, {772, 74, 94}, {900, 52, 100} };
 
-    // LOAD OBSTACLES FOR CHOSEN LEVEL
+        WO* check1 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check1->setPosition(Vector(100, 0, 0));
+        check1->rotateAboutRelY(1.57);
+        check1->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check1->upon_async_model_loaded([check1]()
+            {
+                ModelMeshSkin& cubeskin = check1->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check1->setLabel("checkpoint");
+        worldLst->push_back(check1);
+
+
+        WO* check2 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check2->setPosition(Vector(250, 0, 40));
+        check2->rotateAboutRelY(1.57);
+        check2->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check2->upon_async_model_loaded([check2]()
+            {
+                ModelMeshSkin& cubeskin = check2->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check2->setLabel("checkpoint");
+        worldLst->push_back(check2);
+
+        WO* check3 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check3->setPosition(Vector(400, 0, 80));
+        check3->rotateAboutRelY(1.57);
+        check3->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check3->upon_async_model_loaded([check3]()
+            {
+                ModelMeshSkin& cubeskin = check3->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check3->setLabel("checkpoint");
+        worldLst->push_back(check3);
+
+        WO* check4 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check4->setPosition(Vector(525, 40, 100));
+        check4->rotateAboutRelY(1.57);
+        check4->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check4->upon_async_model_loaded([check4]()
+            {
+                ModelMeshSkin& cubeskin = check4->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check4->setLabel("checkpoint");
+        worldLst->push_back(check4);
+
+        WO* check5 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check5->setPosition(Vector(650, 80, 100));
+        check5->rotateAboutRelY(1.57);
+        check5->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check5->upon_async_model_loaded([check5]()
+            {
+                ModelMeshSkin& cubeskin = check5->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check5->setLabel("checkpoint");
+        worldLst->push_back(check5);
+    }
+    if (this->inMainMenu == false && this->chosenLevel == 2) {
+        obstacle_positions = { {125, -44, 8}, {136, -201, 14}, {164, -269, 16}, {34,-352, 10}, {0, -362, 4}, {-66, -200, 15}, {-64, -90, 4} };
+
+        WO* check1 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check1->setPosition(Vector(100, 0, 0));
+        check1->rotateAboutRelY(1.57);
+        check1->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check1->upon_async_model_loaded([check1]()
+            {
+                ModelMeshSkin& cubeskin = check1->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check1->setLabel("checkpoint");
+        worldLst->push_back(check1);
+
+
+        WO* check2 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check2->setPosition(Vector(200, -100, 0));
+        check2->rotateAboutRelY(1.57);
+        check2->rotateAboutRelX(.88);
+        check2->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check2->upon_async_model_loaded([check2]()
+            {
+                ModelMeshSkin& cubeskin = check2->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check2->setLabel("checkpoint");
+        worldLst->push_back(check2);
+
+        WO* check3 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check3->setPosition(Vector(200, -250, 20));
+        check3->rotateAboutRelY(1.57);
+        check3->rotateAboutRelX(1.57);
+        check3->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check3->upon_async_model_loaded([check3]()
+            {
+                ModelMeshSkin& cubeskin = check3->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check3->setLabel("checkpoint");
+        worldLst->push_back(check3);
+
+        WO* check4 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check4->setPosition(Vector(150, -350, 10));
+        check4->rotateAboutRelY(1.57);
+        check4->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check4->upon_async_model_loaded([check4]()
+            {
+                ModelMeshSkin& cubeskin = check4->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check4->setLabel("checkpoint");
+        worldLst->push_back(check4);
+
+        WO* check5 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check5->setPosition(Vector(75,-375, 0));
+        check5->rotateAboutRelY(1.57);
+        check5->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check5->upon_async_model_loaded([check5]()
+            {
+                ModelMeshSkin& cubeskin = check5->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check5->setLabel("checkpoint");
+        worldLst->push_back(check5);
+
+        WO* check6 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check6->setPosition(Vector(-25, -350, 0));
+        check6->rotateAboutRelY(1.57);
+        check6->rotateAboutRelX(.88);
+        check6->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check6->upon_async_model_loaded([check6]()
+            {
+                ModelMeshSkin& cubeskin = check6->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check6->setLabel("checkpoint");
+        worldLst->push_back(check6);
+
+        WO* check7 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check7->setPosition(Vector(-75, -250, -10));
+        check7->rotateAboutRelY(1.57);
+        check7->rotateAboutRelX(1.0);
+        check7->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check7->upon_async_model_loaded([check7]()
+            {
+                ModelMeshSkin& cubeskin = check7->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check7->setLabel("checkpoint");
+        worldLst->push_back(check7);
+
+        WO* check8 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check8->setPosition(Vector(-50, -150, -20));
+        check8->rotateAboutRelY(1.57);
+        check8->rotateAboutRelX(1.57);
+        check8->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check8->upon_async_model_loaded([check8]()
+            {
+                ModelMeshSkin& cubeskin = check8->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check8->setLabel("checkpoint");
+        worldLst->push_back(check8);
+
+        WO* check9 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
+        check9->setPosition(Vector(-25, -25, -10));
+        check9->rotateAboutRelY(1.57);
+        check9->rotateAboutRelX(-.88);
+        check9->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        check9->upon_async_model_loaded([check9]()
+            {
+                ModelMeshSkin& cubeskin = check9->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
+
+            });
+        check9->setLabel("checkpoint");
+        worldLst->push_back(check9);
+    }
+    std::vector< Aftr::Vector > obstacle_scales = { {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f} };
+
+    for (int i = 0; i < obstacle_positions.size(); ++i)
+    {
+        WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/asteroid/10464_Asteroid_v1_Iterations-2.obj", obstacle_scales[i], physics, physics_scene, obstacle_positions[i]);
+        wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
+        wo->upon_async_model_loaded([this, wo]()
+            {
+                setupFiltering(wo->actor, FILTER::ASTEROID, FILTER::LASER);
+            });
+        worldLst->push_back(wo);
+        asteroids.push_back(wo);
+    }
+    createFinalProjectWayPoints();
+
 }
 
 void GLViewFinalProject::setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask)
@@ -776,7 +984,6 @@ void Aftr::GLViewFinalProject::loadMap()
    }
 
    std::string cockpit(ManagerEnvironmentConfiguration::getLMM() + "/models/spaceship-cockpit/Spaceship_Cockpit.fbx");
-   std::string ring(ManagerEnvironmentConfiguration::getLMM() + "/models/66-ring-ornament/vers(4)-men-design #RGmen_US 5_H 1.65_W 5.stl");
 
    /*SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
    xcontroller = nullptr; 
@@ -894,91 +1101,13 @@ void Aftr::GLViewFinalProject::loadMap()
        worldLst->push_back(wo);
 
 
-
-       WO* check1 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check1->setPosition(Vector(100, 0, 0));
-       check1->rotateAboutRelY(1.57);
-       check1->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       check1->upon_async_model_loaded([check1]()
-           {
-               ModelMeshSkin& cubeskin = check1->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-               //cubeskin.getMultiTextureSet().at(0)->setTextureRepeats(5.0f);
-               //cubeskin.setAmbient(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Color of object when it is not in any light
-               //cubeskin.setDiffuse(aftrColor4f(1.0f, 1.0f, 1.0f, 1.0f)); //Diffuse color components (ie, matte shading color of this object)
-               //cubeskin.setSpecular(aftrColor4f(0.4f, 0.4f, 0.4f, 1.0f)); //Specular color component (ie, how "shiney" it is)
-               //cubeskin.setSpecularCoefficient(10); // How "sharp" are the specular highlights (bigger is sharper, 1000 is very sharp, 10 is very dull)
-           });
-       check1->setLabel("checkpoint");
-       worldLst->push_back(check1);
-
-
-       WO* check2 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check2->setPosition(Vector(250, 0, 40));
-       check2->rotateAboutRelY(1.57);
-       check2->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       check2->upon_async_model_loaded([check2]()
-           {
-               ModelMeshSkin& cubeskin = check2->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-               
-           });
-       check2->setLabel("checkpoint");
-       worldLst->push_back(check2);
-
-       WO* check3 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check3->setPosition(Vector(400, 0, 80));
-       check3->rotateAboutRelY(1.57);
-       check3->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       check3->upon_async_model_loaded([check3]()
-           {
-               ModelMeshSkin& cubeskin = check3->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-
-           });
-       check3->setLabel("checkpoint");
-       worldLst->push_back(check3);
-
-       WO* check4 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check4->setPosition(Vector(525, 40, 100));
-       check4->rotateAboutRelY(1.57);
-       check4->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       check4->upon_async_model_loaded([check4]()
-           {
-               ModelMeshSkin& cubeskin = check4->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-
-           });
-       check4->setLabel("checkpoint");
-       worldLst->push_back(check4);
-
-       WO* check5 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check5->setPosition(Vector(650, 80, 100));
-       check5->rotateAboutRelY(1.57);
-       check5->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       check5->upon_async_model_loaded([check5]()
-           {
-               ModelMeshSkin& cubeskin = check5->getModel()->getModelDataShared()->getModelMeshes().at(0)->getSkins().at(0);
-
-           });
-       check5->setLabel("checkpoint");
-       worldLst->push_back(check5);
-
+       
    }
    std::string music(ManagerEnvironmentConfiguration::getLMM() + "/sounds/music_astro_race.ogg");
    this->soundEngine = irrklang::createIrrKlangDevice();
    irrklang::ISound* sound = soundEngine->play2D(music.c_str(), true);
 
-   std::vector< Aftr::Vector > obstacle_positions = { {175, 1, 12}, {325, -2, 60}, {466, 22, 80}, {578, 62, 90}, {700, 82, 101}, {772, 74, 94}, {900, 52, 100} };
-   std::vector< Aftr::Vector > obstacle_scales = { {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f} };
 
-   for ( int i = 0; i < obstacle_positions.size(); ++i )
-   {
-       WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/asteroid/10464_Asteroid_v1_Iterations-2.obj", obstacle_scales[i], physics, physics_scene, obstacle_positions[i]);
-       wo->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
-       wo->upon_async_model_loaded([this, wo]()
-           {
-               setupFiltering(wo->actor, FILTER::ASTEROID, FILTER::LASER);
-           });
-       worldLst->push_back(wo);
-       asteroids.push_back(wo);
-   }
 
    {
        physx::PxMaterial* gMaterial = physics->createMaterial(0.5f, 0.5f, 0.6f);
@@ -1036,34 +1165,76 @@ void Aftr::GLViewFinalProject::loadMap()
    // Turn off axes
    Axes::isVisible = false;
 
-   createFinalProjectWayPoints();
 }
 
 
 void GLViewFinalProject::createFinalProjectWayPoints()
 {
    // Create a waypoint with a radius of 3, a frequency of 5 seconds, activated by GLView's camera, and is visible.
-   WayPointParametersBase params(this);
-   params.frequency = 0;
-   params.useCamera = true;
-   params.visible = false;
-   WOWayPointSpherical* wayPt = WOWayPointSphericalDerived::New( params, 8 );
-   wayPt->setPosition( Vector( 100, 0, 0 ) );
-   worldLst->push_back( wayPt );
+    if (this->inMainMenu == false && this->chosenLevel == 1) {
+        WayPointParametersBase params(this);
+        params.frequency = 0;
+        params.useCamera = true;
+        params.visible = false;
+        WOWayPointSpherical* wayPt = WOWayPointSphericalDerived::New(params, 8);
+        wayPt->setPosition(Vector(100, 0, 0));
+        worldLst->push_back(wayPt);
 
-   WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt2->setPosition(Vector(250, 0, 40));
-   worldLst->push_back(wayPt2);
+        WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt2->setPosition(Vector(250, 0, 40));
+        worldLst->push_back(wayPt2);
 
-   WOWayPointSpherical* wayPt3 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt3->setPosition(Vector(400, 0, 80));
-   worldLst->push_back(wayPt3);
+        WOWayPointSpherical* wayPt3 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt3->setPosition(Vector(400, 0, 80));
+        worldLst->push_back(wayPt3);
 
-   WOWayPointSpherical* wayPt4 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt4->setPosition(Vector(525, 40, 100));
-   worldLst->push_back(wayPt4);
+        WOWayPointSpherical* wayPt4 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt4->setPosition(Vector(525, 40, 100));
+        worldLst->push_back(wayPt4);
 
-   WOWayPointSpherical* wayPt5 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt5->setPosition(Vector(650, 80, 100));
-   worldLst->push_back(wayPt5);
+        WOWayPointSpherical* wayPt5 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt5->setPosition(Vector(650, 80, 100));
+        worldLst->push_back(wayPt5);
+    }
+    if (this->inMainMenu == false && this->chosenLevel == 2) {
+        WayPointParametersBase params(this);
+        params.frequency = 6000;
+        params.useCamera = true;
+        params.visible = false;
+        WOWayPointSpherical* wayPt = WOWayPointSphericalDerived::New(params, 8);
+        wayPt->setPosition(Vector(100, 0, 0));
+        worldLst->push_back(wayPt);
+
+        WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt2->setPosition(Vector(200, -100, 0));
+        worldLst->push_back(wayPt2);
+
+        WOWayPointSpherical* wayPt3 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt3->setPosition(Vector(200, -250, 20));
+        worldLst->push_back(wayPt3);
+
+        WOWayPointSpherical* wayPt4 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt4->setPosition(Vector(150, -350, 10));
+        worldLst->push_back(wayPt4);
+
+        WOWayPointSpherical* wayPt5 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt5->setPosition(Vector(75, -375, 0));
+        worldLst->push_back(wayPt5);
+
+        WOWayPointSpherical* wayPt6 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt6->setPosition(Vector(-25, -350, 0));
+        worldLst->push_back(wayPt6);
+
+        WOWayPointSpherical* wayPt7 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt7->setPosition(Vector(-75, -250, -10));
+        worldLst->push_back(wayPt7);
+
+        WOWayPointSpherical* wayPt8 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt8->setPosition(Vector(-50, -150, -20));
+        worldLst->push_back(wayPt8);
+
+        WOWayPointSpherical* wayPt9 = WOWayPointSphericalDerived::New(params, 8);
+        wayPt9->setPosition(Vector(-25, -25, -10));
+        worldLst->push_back(wayPt9);
+    }
 }
