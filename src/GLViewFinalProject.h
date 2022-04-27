@@ -40,6 +40,7 @@ public:
    virtual void onKeyUp( const SDL_KeyboardEvent& key );
    virtual void onJoyButtonDown(const SDL_JoyButtonEvent& key);
    virtual void onJoyButtonUp(const SDL_JoyButtonEvent& key);
+   virtual void onJoyHatMotion(const SDL_JoyHatEvent& key);
    irrklang::ISoundEngine* soundEngine;
    //virtual void onControllerAxisMotion(const SDL_ControllerAxisEvent& joy);
    //virtual void onJoyHatMotion(const SDL_JoyHatEvent& joy);

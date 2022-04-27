@@ -49,12 +49,17 @@
 #include "WOPhysxSphere.h"
 
 
-//SDL_JoyButtonEvent whichbutton;
 bool rb = false;
 bool lb = false;
-//SDL_GameController* xcontroller;
-//SDL_Event ev;
+bool dup = false;
+bool ddown = false;
+bool dleft = false;
+bool dright = false;
+bool rollLeft = false;
+bool rollRight = false;
+
 using namespace Aftr;
+bool course2 = false;
 bool start = true;
 std::chrono::steady_clock::time_point t1;
 std::chrono::steady_clock::time_point t2;
@@ -86,6 +91,9 @@ class laserContactEvent : public physx::PxSimulationEventCallback
 
     void onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
     {
+        std::string explosionSound(ManagerEnvironmentConfiguration::getLMM() + "/sounds/explosion.ogg");
+        irrklang::ISoundEngine* soundEngine = irrklang::createIrrKlangDevice();
+        irrklang::ISound* sound = soundEngine->play2D(explosionSound.c_str());
         for (physx::PxU32 i = 0; i < nbPairs; i++)
         {
             const physx::PxContactPair& cp = pairs[i];
@@ -353,6 +361,24 @@ void GLViewFinalProject::updateWorld()
        camera->addForce(camera->getLinearVelocity() * -0.1, physx::PxForceMode::eVELOCITY_CHANGE);
        //this->cam->moveOppositeLookDirection(this->cam->getCameraVelocity());
    }
+   if (dup) {
+       cam->rotateAboutRelY(-.02);
+   }
+   if (ddown) {
+       cam->rotateAboutRelY(.02);
+   }
+   if (dleft) {
+       cam->rotateAboutRelZ(.02);
+   }
+   if (dright) {
+       cam->rotateAboutRelZ(-.02);
+   }
+   if (rollLeft) {
+       cam->rotateAboutRelX(-.02);
+   }
+   if (rollRight) {
+       cam->rotateAboutRelX(.02);
+   }
    if (!start && !lapover) {
        if (this->timerlabel != NULL) {
            t2 = std::chrono::steady_clock::now();
@@ -523,7 +549,22 @@ void GLViewFinalProject::onJoyButtonDown(const SDL_JoyButtonEvent& key)
     if (key.button == 5)
     {
         rb = true;
-        std::cout << "RB" << std::endl;
+        if (start) {
+            t1 = std::chrono::steady_clock::now();
+            start = false;
+        }
+    }
+
+    if (key.button == 8) {
+        rollLeft = true;
+        //cam->rotateAboutRelX(-.2);
+    }
+    if (key.button == 9) {
+        rollRight = true;
+        //cam->rotateAboutRelX(.2);
+    }
+    if (key.button == 0) {
+        fireLaser();
     }
 
 }
@@ -545,9 +586,38 @@ void GLViewFinalProject::onJoyButtonUp(const SDL_JoyButtonEvent& key)
         rb = false;
         std::cout << "RB" << std::endl;
     }
+    if (key.button == 8) {
+        rollLeft = false;
+    }
+    if (key.button == 9) {
+        rollRight = false;
+    }
+}
 
-    
-
+void GLViewFinalProject::onJoyHatMotion(const SDL_JoyHatEvent& key) {
+    GLView::onJoyHatMotion(key);
+    if (key.value == 1) {
+        //cam->rotateAboutRelY(-.2);
+        dup = true;
+    }
+    if (key.value == 4) {
+        //cam->rotateAboutRelY(.2);
+        ddown = true;
+    }
+    if (key.value == 8) {
+        //cam->rotateAboutRelZ(.2);
+        dleft = true;
+    }
+    if (key.value == 2) {
+        //cam->rotateAboutRelZ(-.2);
+        dright = true;
+    }
+    if (key.value == 0) {
+        dup = false;
+        ddown = false;
+        dleft = false;
+        dright = false;
+    }
 }
 
 void GLViewFinalProject::setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask)
@@ -568,6 +638,10 @@ void GLViewFinalProject::setupFiltering(physx::PxRigidActor* actor, physx::PxU32
 
 void GLViewFinalProject::fireLaser()
 {
+
+    std::string laserSound(ManagerEnvironmentConfiguration::getLMM() + "/sounds/SpaceLaserShot.ogg");
+    irrklang::ISoundEngine* soundEngine = irrklang::createIrrKlangDevice();
+    irrklang::ISound* sound = soundEngine->play2D(laserSound.c_str());
     {
         //WOPhysxSphere* wo = WOPhysxSphere::New(ManagerEnvironmentConfiguration::getLMM() + "/models/laser/my laser.blend", Vector(1, 1, 1), physics, physics_scene, cam->getPosition() + cam->getLookDirection() * 5);
         WOPhysxBox* wo = WOPhysxBox::New(ManagerEnvironmentConfiguration::getLMM() + "/models/laser/mylaser.obj", Vector(0.5, 0.5, 0.5), physics, physics_scene, cam, camera );
@@ -777,7 +851,7 @@ void Aftr::GLViewFinalProject::loadMap()
 
 
        WO* check1 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check1->setPosition(Vector(0, 0, 40));
+       check1->setPosition(Vector(100, 0, 0));
        check1->rotateAboutRelY(1.57);
        check1->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
        check1->upon_async_model_loaded([check1]()
@@ -794,7 +868,7 @@ void Aftr::GLViewFinalProject::loadMap()
 
 
        WO* check2 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check2->setPosition(Vector(-50, 0, 40));
+       check2->setPosition(Vector(250, 0, 40));
        check2->rotateAboutRelY(1.57);
        check2->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
        check2->upon_async_model_loaded([check2]()
@@ -806,7 +880,7 @@ void Aftr::GLViewFinalProject::loadMap()
        worldLst->push_back(check2);
 
        WO* check3 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check3->setPosition(Vector(-150, 0, 80));
+       check3->setPosition(Vector(400, 0, 80));
        check3->rotateAboutRelY(1.57);
        check3->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
        check3->upon_async_model_loaded([check3]()
@@ -818,7 +892,7 @@ void Aftr::GLViewFinalProject::loadMap()
        worldLst->push_back(check3);
 
        WO* check4 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check4->setPosition(Vector(-250, 40, 100));
+       check4->setPosition(Vector(525, 40, 100));
        check4->rotateAboutRelY(1.57);
        check4->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
        check4->upon_async_model_loaded([check4]()
@@ -830,7 +904,7 @@ void Aftr::GLViewFinalProject::loadMap()
        worldLst->push_back(check4);
 
        WO* check5 = WO::New(ring, Vector(1, 1, 1), MESH_SHADING_TYPE::mstFLAT);
-       check5->setPosition(Vector(-300, 80, 100));
+       check5->setPosition(Vector(650, 80, 100));
        check5->rotateAboutRelY(1.57);
        check5->renderOrderType = RENDER_ORDER_TYPE::roOPAQUE;
        check5->upon_async_model_loaded([check5]()
@@ -846,7 +920,7 @@ void Aftr::GLViewFinalProject::loadMap()
    this->soundEngine = irrklang::createIrrKlangDevice();
    irrklang::ISound* sound = soundEngine->play2D(music.c_str());
 
-   std::vector< Aftr::Vector > obstacle_positions = { {-25, 1, 37}, {-67, 6, 40}, {-99, -9, 63}, {-168, 19, 83}, {-258, 82, 101}, {-216, 10, 94}, {-277, 50, 100} };
+   std::vector< Aftr::Vector > obstacle_positions = { {175, 1, 12}, {325, -2, 60}, {466, 22, 80}, {578, 62, 90}, {700, 82, 101}, {772, 74, 94}, {900, 52, 100} };
    std::vector< Aftr::Vector > obstacle_scales = { {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f}, {0.005f, 0.005f, 0.005f} };
 
    for ( int i = 0; i < obstacle_positions.size(); ++i )
@@ -929,22 +1003,22 @@ void GLViewFinalProject::createFinalProjectWayPoints()
    params.useCamera = true;
    params.visible = false;
    WOWayPointSpherical* wayPt = WOWayPointSphericalDerived::New( params, 8 );
-   wayPt->setPosition( Vector( 0, 0, 40 ) );
+   wayPt->setPosition( Vector( 100, 0, 0 ) );
    worldLst->push_back( wayPt );
 
    WOWayPointSpherical* wayPt2 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt2->setPosition(Vector(-50, 0, 40));
+   wayPt2->setPosition(Vector(250, 0, 40));
    worldLst->push_back(wayPt2);
 
    WOWayPointSpherical* wayPt3 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt3->setPosition(Vector(-150, 0, 80));
+   wayPt3->setPosition(Vector(400, 0, 80));
    worldLst->push_back(wayPt3);
 
    WOWayPointSpherical* wayPt4 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt4->setPosition(Vector(-250, 40, 100));
+   wayPt4->setPosition(Vector(525, 40, 100));
    worldLst->push_back(wayPt4);
 
    WOWayPointSpherical* wayPt5 = WOWayPointSphericalDerived::New(params, 8);
-   wayPt5->setPosition(Vector(-300, 80, 100));
+   wayPt5->setPosition(Vector(650, 80, 100));
    worldLst->push_back(wayPt5);
 }
