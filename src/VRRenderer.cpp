@@ -161,6 +161,86 @@ void VRRenderer::onCreate(XrSession session, XrViewConfigurationView* viewconfig
 	std::cout << "END ON CREATE RENDERER\n\n\n";
 }
 
+static void XrMatrix4x4f_CreateFromQuaternion(Mat4& result, const XrQuaternionf* quat)
+{
+	const float x2 = quat->x + quat->x;
+	const float y2 = quat->y + quat->y;
+	const float z2 = quat->z + quat->z;
+
+	const float xx2 = quat->x * x2;
+	const float yy2 = quat->y * y2;
+	const float zz2 = quat->z * z2;
+
+	const float yz2 = quat->y * z2;
+	const float wx2 = quat->w * x2;
+	const float xy2 = quat->x * y2;
+	const float wz2 = quat->w * z2;
+	const float xz2 = quat->x * z2;
+	const float wy2 = quat->w * y2;
+
+	result[0] = 1.0f - yy2 - zz2;
+	result[1] = xy2 + wz2;
+	result[2] = xz2 - wy2;
+	result[3] = 0.0f;
+
+	result[4] = xy2 - wz2;
+	result[5] = 1.0f - xx2 - zz2;
+	result[6] = yz2 + wx2;
+	result[7] = 0.0f;
+
+	result[8] = xz2 + wy2;
+	result[9] = yz2 - wx2;
+	result[10] = 1.0f - xx2 - yy2;
+	result[11] = 0.0f;
+
+	result[12] = 0.0f;
+	result[13] = 0.0f;
+	result[14] = 0.0f;
+	result[15] = 1.0f;
+}
+
+static void XrMatrix4x4f_CreateTranslation(Mat4& result, const float x, const float y, const float z)
+{
+	result[0] = 1.0f;
+	result[1] = 0.0f;
+	result[2] = 0.0f;
+	result[3] = 0.0f;
+	result[4] = 0.0f;
+	result[5] = 1.0f;
+	result[6] = 0.0f;
+	result[7] = 0.0f;
+	result[8] = 0.0f;
+	result[9] = 0.0f;
+	result[10] = 1.0f;
+	result[11] = 0.0f;
+	result[12] = x;
+	result[13] = y;
+	result[14] = z;
+	result[15] = 1.0f;
+}
+
+static void XrMatrix4x4f_Invert(Mat4& result, const Mat4 src)
+{
+	result[0] = src[0];
+	result[1] = src[4];
+	result[2] = src[8];
+	result[3] = 0.0f;
+	result[4] = src[1];
+	result[5] = src[5];
+	result[6] = src[9];
+	result[7] = 0.0f;
+	result[8] = src[2];
+	result[9] = src[6];
+	result[10] = src[10];
+	result[11] = 0.0f;
+	result[12] = -(src[0] * src[12] + src[1] * src[13] + src[2] * src[14]);
+	result[13] = -(src[4] * src[12] + src[5] * src[13] + src[6] * src[14]);
+	result[14] = -(src[8] * src[12] + src[9] * src[13] + src[10] * src[14]);
+	result[15] = 1.0f;
+}
+
+static int hello = 0;
+
 void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 {
 	Aftr::Mat4 result;
@@ -250,10 +330,37 @@ void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 	//cam.setCameraProjectionMatrix(aftrmat.getPtr());
 	//cam.setPose(aftrmat);
 
-	Aftr::Mat4 result2 = result * aftrmat;
-	//Aftr::Mat4 result2 = result * cam.getPose();
+	Mat4 rotationMatrix;
+	XrMatrix4x4f_CreateFromQuaternion(rotationMatrix, &xrpose.orientation);
+
+	Mat4 translationMatrix;
+	XrMatrix4x4f_CreateTranslation(translationMatrix, xrpose.position.x, xrpose.position.y, xrpose.position.z );
+
+	Mat4 viewMatrix = translationMatrix * rotationMatrix;
+
+	Mat4 result2;
+
+	XrMatrix4x4f_Invert(result2, viewMatrix);
+
+
+	//std::cout << fov.angleLeft << " " << fov.angleRight << " " << fov.angleDown << " " << fov.angleUp << std::endl;
+	//std::cout << result2 << std::endl << std::endl;
+
 	
 
+	Aftr::Mat4 result3 = result * aftrmat;
+	//Aftr::Mat4 result2 = result * cam.getPose();
+
+
+	++hello;
+
+	if (hello == 100)
+	{
+		hello = 0;
+		//std::cout << aftrmat << std::endl;
+		//std::cout << result2 << std::endl << std::endl;
+	}
+	
 
 	//std::cout << result2 << std::endl;
 	//std::cout << cam.getCameraProjectionMatrix() << std::endl << std::endl;
@@ -262,23 +369,36 @@ void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 	
 	//cam.setCameraProjectionMatrix((result * aftrmat).getPtr());
 
-	float temp1, temp2, temp3;
+	float temp1, temp2, temp3, temp4, temp5, temp6;
 
-	temp1 = result2[4];
-	temp2 = result2[5];
-	temp3 = result2[6];
+	temp1 = result2[8];
+	temp2 = result2[9];
+	temp3 = result2[10];
 
-	//result2[4] = result2[8];
-	//result2[5] = result2[9];
-	//result2[6] = result2[10];
+	result2[8] = result2[4];
+	result2[9] = result2[5];
+	result2[10] = result2[6];
+
+	/*result2[0] = result2[4];
+	result2[1] = result2[5];
+	result2[2] = result2[6];*/
+
+	result2[4] = temp1;
+	result2[5] = temp2;
+	result2[6] = temp3;
+
+	
 
 	//result2[8] = temp1;
 	//result2[9] = temp2;
 	//result2[10] = temp3;
 
-	cam.setCameraProjectionMatrix(result2.getPtr());
+	//cam.setPose(result2);
+	//cam.setCameraProjectionMatrix(result3.transpose4x4().getPtr());
 
-	//cam.setPose(aftrmat);
+	//glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE, reinterpret_cast<const GLfloat*>(result3.getPtr()));
+
+	cam.setPose(result2);
 
 	//float scale = 2;
 

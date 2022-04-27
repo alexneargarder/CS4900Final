@@ -3,6 +3,7 @@
 #include "GLView.h"
 #include "irrKlang.h"
 
+//#define VR
 #ifdef VR
 // OpenXR
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -18,6 +19,7 @@
 #include "extensions/PxDefaultAllocator.h"
 
 #include "WOPhysxBox.h"
+#include "MainMenuButton.h"
 
 namespace Aftr
 {
@@ -50,6 +52,7 @@ public:
    void breakAsteroid();
    void setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask);
 
+   void chooseLevel(int levelNum);
 
 protected:
 
@@ -58,6 +61,12 @@ protected:
 
    virtual void onCreate();
    WOGUILabel* timerlabel;
+
+   WO* whiteBackground;
+   WOGUILabel* title;
+   std::vector< MainMenuButton* > menuButtons;
+   bool inMainMenu = true;
+   int chosenLevel = 1;
 
 #ifdef VR
    XrInstance xrInstance;
