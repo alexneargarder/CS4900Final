@@ -3,7 +3,7 @@
 #include "GLView.h"
 #include "irrKlang.h"
 
-//#define VR
+#define VR
 #ifdef VR
 // OpenXR
 #define XR_USE_GRAPHICS_API_OPENGL

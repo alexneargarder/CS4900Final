@@ -398,7 +398,7 @@ void setCameraPose(Camera& cam, XrPosef xrpose, XrFovf fov)
 
 	//glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE, reinterpret_cast<const GLfloat*>(result3.getPtr()));
 
-	cam.setPose(result2);
+	//cam.setPose(result2);
 
 	//float scale = 2;
 
